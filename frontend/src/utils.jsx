@@ -33,26 +33,51 @@ export function FriendlyProjection({ payload }) {
   return <div className="friendly-badge friendly-neutral">↔️ Sideways Range Expected ({(sideways * 100).toFixed(0)}% Probability)</div>;
 }
 
-/** Derive simulated agent strategy from prediction payload */
 export function deriveStrategy(payload) {
   if (!payload) return null;
   const { up, down } = payload.model_prediction.direction_probabilities;
+  const meanAcc = payload.validation_summary?.mean_accuracy || 0;
+  const stdAcc = payload.validation_summary?.std_accuracy || 0;
+  const baselineStatus = payload.validation_summary?.accuracy_vs_naive_baseline || "";
+  const confidenceNote = payload.model_prediction?.confidence_note || "";
+
+  // If confidence is low or indistinguishable, override direction
+  const isLowConfidence = 
+    baselineStatus === 'worse' || 
+    baselineStatus === 'indistinguishable' || 
+    confidenceNote.includes('CONFIDENCE LOW') ||
+    meanAcc < 0.55 || 
+    stdAcc > 0.15;
+
+  if (isLowConfidence) {
+    return {
+      recommendation: 'NO ACTION / HOLD',
+      rationale: `Low confidence (Accuracy: ${(meanAcc * 100).toFixed(1)}%, σ: ${(stdAcc * 100).toFixed(1)}%).`,
+      action: 'Do not take directional positions. Wait for clearer setup.',
+      agentName: 'Antigravity Strategy Agent v1',
+      isLowConfidence: true
+    };
+  }
+
   if (up > 0.4) return {
-    recommendation: 'ACCUMULATE (LONG)',
+    recommendation: 'ADD EXPOSURE (LONG)',
     rationale: `Random Forest indicates upward probability (${(up * 100).toFixed(0)}%) with support levels holding.`,
     action: 'Consider spot dollar-cost averaging near order book walls.',
     agentName: 'Antigravity Strategy Agent v1',
+    isLowConfidence: false
   };
   if (down > 0.4) return {
     recommendation: 'REDUCE EXPOSURE (SHORT)',
     rationale: `Model projecting downward trend over the next ${payload.meta.horizon_hours}h.`,
     action: 'Set tight stop losses or accumulate hedge parameters.',
     agentName: 'Antigravity Strategy Agent v1',
+    isLowConfidence: false
   };
   return {
     recommendation: 'HOLD / NEUTRAL',
     rationale: 'Market showing high probability of sideways volatility.',
     action: 'Keep capital in cash reserves; wait for technical range breakouts.',
     agentName: 'Antigravity Strategy Agent v1',
+    isLowConfidence: false
   };
 }

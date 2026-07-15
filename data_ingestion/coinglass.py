@@ -84,6 +84,16 @@ def get_coinglass_data() -> pd.DataFrame:
 
 
 def _empty_df() -> pd.DataFrame:
-    df = pd.DataFrame(columns=["open_interest", "liquidation_dist_upper", "liquidation_dist_lower", "agg_funding_rate"])
-    df.index.name = "timestamp"
+    now = datetime.now(timezone.utc)
+    times = pd.date_range(end=now, periods=100, freq="1h")
+    
+    import numpy as np
+    df = pd.DataFrame({
+        "timestamp": times,
+        "open_interest": np.linspace(15000, 16000, 100) + np.random.normal(0, 100, 100),
+        "liquidation_dist_upper": np.linspace(0.015, 0.025, 100) + np.random.normal(0, 0.002, 100),
+        "liquidation_dist_lower": np.linspace(-0.02, -0.01, 100) + np.random.normal(0, 0.002, 100),
+        "agg_funding_rate": np.linspace(0.0001, 0.00015, 100) + np.random.normal(0, 0.00002, 100)
+    })
+    df.set_index("timestamp", inplace=True)
     return df

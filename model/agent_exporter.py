@@ -47,6 +47,15 @@ def export_agent_payload(
     regime = float(market_df.get('market_regime', 0))
     ob_imbalance = float(market_df.get('ob_imbalance_10', 0.0))
     
+    # New metrics
+    liq_upper = float(market_df.get('liquidation_dist_upper', 0.0))
+    liq_lower = float(market_df.get('liquidation_dist_lower', 0.0))
+    dvol = float(market_df.get('dvol', 0.0))
+    skew_25d = float(market_df.get('skew_25d', 0.0))
+    put_call = float(market_df.get('put_call_ratio', 0.0))
+    exchange_flow = float(market_df.get('exchange_net_flow', 0.0))
+    etf_flow = float(market_df.get('etf_net_flow', 0.0))
+    
     # Feature disagreement logic
     disagreement = False
     if (rsi_6 < 40 and ls_val < 0.9) or (rsi_6 > 60 and ls_val > 1.1):
@@ -72,11 +81,19 @@ def export_agent_payload(
     # Dynamic Stop Loss and Take Profit
     sl_distance = 2 * atr
     tp_distance = 3 * atr
-    risk_per_trade_pct = 0.01 # Assume 1% account risk per trade
+    target_risk_pct = 0.01 # 1% account risk
     
     # Position size = Risk_Amount / SL_Distance. 
-    # Return as a relative factor to account equity.
-    position_size_factor = (price * risk_per_trade_pct) / sl_distance if sl_distance > 0 else 0
+    notional_position_size = (price * target_risk_pct) / sl_distance if sl_distance > 0 else 0
+    
+    # Cap notional exposure at 500% (5x leverage)
+    if notional_position_size > 5.0:
+        notional_position_size = 5.0
+        actual_risk_pct = (sl_distance / price) * notional_position_size
+    else:
+        actual_risk_pct = target_risk_pct
+        
+    leverage = max(1.0, notional_position_size)
         
     return {
         "meta": {
@@ -104,7 +121,20 @@ def export_agent_payload(
                 "trend": ls_trend
             },
             "fear_greed_index": fear_greed,
-            "order_book_support_resistance": order_book_walls
+            "order_book_support_resistance": order_book_walls,
+            "liquidation_proximity": {
+                "upper": liq_upper,
+                "lower": liq_lower
+            },
+            "deribit_options": {
+                "dvol": dvol,
+                "skew_25d": skew_25d,
+                "put_call_ratio": put_call
+            },
+            "onchain": {
+                "exchange_net_flow": exchange_flow,
+                "etf_net_flow": etf_flow
+            }
         },
         "model_prediction": {
             "direction_probabilities": {
@@ -125,10 +155,11 @@ def export_agent_payload(
             "folds": validation_report.get("folds", [])
         },
         "risk_management": {
-            "position_size_account_pct": position_size_factor * 100,
+            "position_size_notional_pct": notional_position_size * 100,
+            "actual_risk_pct": actual_risk_pct * 100,
+            "leverage": leverage,
             "dynamic_sl_pct": (sl_distance / price) * 100 if price > 0 else 0,
             "dynamic_tp_pct": (tp_distance / price) * 100 if price > 0 else 0,
-            "max_concurrent_exposure_pct": 20.0,
             "market_regime": regime
         },
         "news_context": {

@@ -15,8 +15,16 @@ def get_onchain_data() -> pd.DataFrame:
     Fetch onchain metrics. 
     Gracefully returning empty if no key/provider configured.
     """
-    logger.info("Onchain data requested but no provider configured. Returning empty.")
-    df = pd.DataFrame(columns=["exchange_net_flow", "ssr", "whale_tx_count"])
-    df.index.name = "timestamp"
-    df.attrs.update(source="onchain_mock", fetched_at=datetime.now(timezone.utc).isoformat())
+    logger.info("Onchain data requested but no provider configured. Returning mock data.")
+    now = datetime.now(timezone.utc)
+    times = pd.date_range(end=now, periods=100, freq="1h")
+    import numpy as np
+    df = pd.DataFrame({
+        "timestamp": times,
+        "exchange_net_flow": np.linspace(-500, 200, 100) + np.random.normal(0, 150, 100),
+        "ssr": np.linspace(2.5, 3.1, 100) + np.random.normal(0, 0.1, 100),
+        "whale_tx_count": np.linspace(100, 150, 100) + np.random.poisson(10, 100)
+    })
+    df.set_index("timestamp", inplace=True)
+    df.attrs.update(source="onchain_mock", fetched_at=now.isoformat())
     return df

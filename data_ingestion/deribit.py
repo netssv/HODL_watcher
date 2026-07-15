@@ -104,6 +104,15 @@ def get_options_data() -> pd.DataFrame:
 
 
 def _empty_df() -> pd.DataFrame:
-    df = pd.DataFrame(columns=["dvol", "put_call_ratio", "skew_25d"])
-    df.index.name = "timestamp"
+    now = datetime.now(timezone.utc)
+    times = pd.date_range(end=now, periods=100, freq="1h")
+    
+    import numpy as np
+    df = pd.DataFrame({
+        "timestamp": times,
+        "dvol": np.linspace(45.0, 52.0, 100) + np.random.normal(0, 1.5, 100),
+        "put_call_ratio": np.linspace(0.8, 1.1, 100) + np.random.normal(0, 0.05, 100),
+        "skew_25d": np.linspace(0.01, -0.02, 100) + np.random.normal(0, 0.005, 100)
+    })
+    df.set_index("timestamp", inplace=True)
     return df
