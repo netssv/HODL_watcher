@@ -1,0 +1,184 @@
+"""
+Feature engineering functions for BTC/USDT.
+
+Rules:
+1. Every function declares its lookback window in the docstring.
+2. All rolling computations use center=False (default) to prevent data leakage.
+3. Joins must use merge_asof with direction='backward' to avoid future lookahead.
+"""
+
+import pandas as pd
+import numpy as np
+from typing import Dict, Any
+
+
+def compute_rsi(df: pd.DataFrame, window: int) -> pd.Series:
+    """
+    Compute relative strength index (RSI).
+    
+    Lookback window: window + 1 periods.
+    """
+    delta = df['close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=window, center=False).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=window, center=False).mean()
+    rs = gain / (loss + 1e-9)
+    return 100 - (100 / (1 + rs))
+
+
+def compute_macd(df: pd.DataFrame, fast_window: int = 12, slow_window: int = 26, signal_window: int = 9) -> Dict[str, pd.Series]:
+    """
+    Compute MACD line and signal line.
+    
+    Lookback window: slow_window + signal_window periods.
+    """
+    fast_ema = df['close'].ewm(span=fast_window, adjust=False).mean()
+    slow_ema = df['close'].ewm(span=slow_window, adjust=False).mean()
+    macd_line = fast_ema - slow_ema
+    signal_line = macd_line.ewm(span=signal_window, adjust=False).mean()
+    return {
+        "macd": macd_line,
+        "macd_signal": signal_line
+    }
+
+
+def compute_bollinger_bands(df: pd.DataFrame, window: int = 20, num_std: float = 2.0) -> Dict[str, pd.Series]:
+    """
+    Compute Bollinger Bands (middle, upper, lower).
+    
+    Lookback window: window periods.
+    """
+    rolling_mean = df['close'].rolling(window=window, center=False).mean()
+    rolling_std = df['close'].rolling(window=window, center=False).std()
+    return {
+        "bb_middle": rolling_mean,
+        "bb_upper": rolling_mean + (num_std * rolling_std),
+        "bb_lower": rolling_mean - (num_std * rolling_std)
+    }
+
+
+def compute_atr(df: pd.DataFrame, window: int = 14) -> pd.Series:
+    """
+    Compute Average True Range (ATR).
+    
+    Lookback window: window + 1 periods.
+    """
+    high_low = df['high'] - df['low']
+    high_close = (df['high'] - df['close'].shift(1)).abs()
+    low_close = (df['low'] - df['close'].shift(1)).abs()
+    ranges = pd.concat([high_low, high_close, low_close], axis=1)
+    true_range = ranges.max(axis=1)
+    return true_range.rolling(window=window, center=False).mean()
+
+
+def build_features(
+    spot_df: pd.DataFrame,
+    futures_df: pd.DataFrame = None,
+    funding_df: pd.DataFrame = None,
+    long_short_df: pd.DataFrame = None,
+    fear_greed_df: pd.DataFrame = None,
+    macro_dfs: Dict[str, pd.DataFrame] = None,
+    order_book_df: pd.DataFrame = None,
+) -> pd.DataFrame:
+    """
+    Build complete feature matrix aligning timestamps chronologically.
+    """
+    # Use spot price as the core time series index
+    df = spot_df.copy()
+    
+    # 1. Technical Indicators
+    df['rsi_6'] = compute_rsi(df, 6)
+    df['rsi_12'] = compute_rsi(df, 12)
+    df['rsi_24'] = compute_rsi(df, 24)
+    
+    macd_res = compute_macd(df)
+    df['macd'] = macd_res['macd']
+    df['macd_signal'] = macd_res['macd_signal']
+    
+    bb_res = compute_bollinger_bands(df)
+    df['bb_upper'] = bb_res['bb_upper']
+    df['bb_lower'] = bb_res['bb_lower']
+    
+    df['ma_7'] = df['close'].rolling(window=7, center=False).mean()
+    df['ma_25'] = df['close'].rolling(window=25, center=False).mean()
+    df['ma_99'] = df['close'].rolling(window=99, center=False).mean()
+    
+    df['atr'] = compute_atr(df)
+    
+    # Distance to MAs
+    df['dist_ma_7'] = (df['close'] - df['ma_7']) / df['ma_7']
+    df['dist_ma_25'] = (df['close'] - df['ma_25']) / df['ma_25']
+    df['dist_ma_99'] = (df['close'] - df['ma_99']) / df['ma_99']
+
+    # 2. Volume relative to MA
+    df['vol_ma_20'] = df['volume'].rolling(window=20, center=False).mean()
+    df['relative_volume'] = df['volume'] / (df['vol_ma_20'] + 1e-9)
+    df['taker_buy_sell_ratio'] = df['taker_buy_base'] / (df['volume'] - df['taker_buy_base'] + 1e-9)
+
+    # Convert index to a column to allow merge_asof
+    df = df.reset_index()
+    df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True).dt.as_unit('ns')
+
+    # 3. Join Derivatives (Binance Futures)
+    if funding_df is not None and not funding_df.empty:
+        funding_sorted = funding_df.reset_index().sort_values('timestamp')
+        funding_sorted['timestamp'] = pd.to_datetime(funding_sorted['timestamp'], utc=True).dt.as_unit('ns')
+        df = pd.merge_asof(
+            df.sort_values('timestamp'),
+            funding_sorted,
+            on='timestamp',
+            direction='backward'
+        )
+        df['funding_rate_diff_7'] = df['funding_rate'].diff(7)
+        
+    if long_short_df is not None and not long_short_df.empty:
+        ls_sorted = long_short_df.reset_index().sort_values('timestamp')
+        ls_sorted['timestamp'] = pd.to_datetime(ls_sorted['timestamp'], utc=True).dt.as_unit('ns')
+        df = pd.merge_asof(
+            df.sort_values('timestamp'),
+            ls_sorted,
+            on='timestamp',
+            direction='backward'
+        )
+        df['long_short_ratio_diff_7'] = df['long_short_ratio'].diff(7)
+
+    # 4. Join Fear & Greed Index
+    if fear_greed_df is not None and not fear_greed_df.empty:
+        fg_sorted = fear_greed_df.reset_index().sort_values('timestamp')
+        fg_sorted['timestamp'] = pd.to_datetime(fg_sorted['timestamp'], utc=True).dt.as_unit('ns')
+        df = pd.merge_asof(
+            df.sort_values('timestamp'),
+            fg_sorted[['timestamp', 'value']],
+            on='timestamp',
+            direction='backward'
+        )
+        df.rename(columns={'value': 'fear_greed'}, inplace=True)
+        df['fear_greed_diff_7'] = df['fear_greed'].diff(7)
+
+    # 5. Join Macro indicators
+    if macro_dfs:
+        for name, macro_df in macro_dfs.items():
+            if macro_df is not None and not macro_df.empty:
+                macro_sorted = macro_df.reset_index().sort_values('timestamp')
+                macro_sorted['timestamp'] = pd.to_datetime(macro_sorted['timestamp'], utc=True).dt.as_unit('ns')
+                df = pd.merge_asof(
+                    df.sort_values('timestamp'),
+                    macro_sorted[['timestamp', 'value']],
+                    on='timestamp',
+                    direction='backward'
+                )
+                df.rename(columns={'value': f'macro_{name}'}, inplace=True)
+
+    # 6. Join order book features (distance to large bids/asks)
+    if order_book_df is not None and not order_book_df.empty:
+        # For simplicity, calculate distance to top bid/ask support/resistance
+        bids = order_book_df[order_book_df['side'] == 'bid']
+        asks = order_book_df[order_book_df['side'] == 'ask']
+        
+        best_bid = bids['price'].max() if not bids.empty else np.nan
+        best_ask = asks['price'].min() if not asks.empty else np.nan
+        
+        df['dist_best_bid'] = (df['close'] - best_bid) / (best_bid + 1e-9)
+        df['dist_best_ask'] = (best_ask - df['close']) / (df['close'] + 1e-9)
+
+    df.set_index('timestamp', inplace=True)
+    return df
