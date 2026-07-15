@@ -60,9 +60,12 @@ function FeatureBadges({ featureConfig, setFeatureConfig, playClick }) {
 export function ApiPipelineCard({ gaps, error }) {
   const connectors = [
     { key: 'binance', name: 'Binance' },
+    { key: 'coinglass', name: 'Coinglass' },
+    { key: 'deribit', name: 'Deribit' },
+    { key: 'onchain', name: 'Onchain' },
+    { key: 'etf_flows', name: 'ETF Flows' },
     { key: 'fear_greed', name: 'Sentiment' },
     { key: 'fred', name: 'FRED Macro' },
-    { key: 'coingecko', name: 'CoinGecko' },
   ];
   return (
     <section className="card">

@@ -16,7 +16,10 @@ from fastapi import FastAPI, APIRouter, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from data_ingestion import binance_spot, binance_futures, fear_greed, fred_macro
+from data_ingestion import (
+    binance_spot, binance_futures, fear_greed, fred_macro,
+    coinglass, deribit, onchain_metrics, etf_flows
+)
 from features.builder import build_features
 from model.validation import prepare_target, run_walk_forward_validation
 from model.agent_exporter import export_agent_payload
@@ -161,6 +164,28 @@ def _fetch_all_sources(limit: int = 500, interval: str = "1h") -> Tuple[Dict[str
     except Exception as e:
         data_gaps.append(f"binance_order_book: {str(e)}")
 
+    # 6. Coinglass, Deribit, Onchain, ETF
+    coinglass_df, deribit_df, onchain_df, etf_df = None, None, None, None
+    try:
+        coinglass_df = coinglass.get_coinglass_data()
+    except Exception as e:
+        data_gaps.append(f"coinglass: {str(e)}")
+        
+    try:
+        deribit_df = deribit.get_options_data()
+    except Exception as e:
+        data_gaps.append(f"deribit: {str(e)}")
+        
+    try:
+        onchain_df = onchain_metrics.get_onchain_data()
+    except Exception as e:
+        data_gaps.append(f"onchain: {str(e)}")
+        
+    try:
+        etf_df = etf_flows.get_etf_flows()
+    except Exception as e:
+        data_gaps.append(f"etf_flows: {str(e)}")
+
     sources = {
         "spot_df": spot_df,
         "futures_df": futures_df,
@@ -168,7 +193,11 @@ def _fetch_all_sources(limit: int = 500, interval: str = "1h") -> Tuple[Dict[str
         "long_short_df": long_short_df,
         "fear_greed_df": fear_greed_df,
         "macro_dfs": macro_dfs,
-        "order_book_df": order_book_df
+        "order_book_df": order_book_df,
+        "coinglass_df": coinglass_df,
+        "deribit_df": deribit_df,
+        "onchain_df": onchain_df,
+        "etf_df": etf_df,
     }
     
     return sources, data_gaps
@@ -230,7 +259,11 @@ def calculate_features(req: FeatureCalculateRequest):
         long_short_df=sources["long_short_df"] if req.features_config.include_derivatives else None,
         fear_greed_df=sources["fear_greed_df"] if req.features_config.include_sentiment else None,
         macro_dfs=sources["macro_dfs"] if req.features_config.include_macro else None,
-        order_book_df=sources["order_book_df"]
+        order_book_df=sources["order_book_df"],
+        coinglass_df=sources["coinglass_df"],
+        deribit_df=sources["deribit_df"],
+        onchain_df=sources["onchain_df"],
+        etf_df=sources["etf_df"]
     )
     
     # Take a sample of latest records
@@ -263,7 +296,11 @@ def train_model(req: TrainRequest):
         long_short_df=sources["long_short_df"] if req.features_config.include_derivatives else None,
         fear_greed_df=sources["fear_greed_df"] if req.features_config.include_sentiment else None,
         macro_dfs=sources["macro_dfs"] if req.features_config.include_macro else None,
-        order_book_df=sources["order_book_df"]
+        order_book_df=sources["order_book_df"],
+        coinglass_df=sources["coinglass_df"],
+        deribit_df=sources["deribit_df"],
+        onchain_df=sources["onchain_df"],
+        etf_df=sources["etf_df"]
     )
     
     # Build classification labels target
@@ -311,7 +348,11 @@ def get_prediction():
         long_short_df=sources["long_short_df"],
         fear_greed_df=sources["fear_greed_df"],
         macro_dfs=sources["macro_dfs"],
-        order_book_df=sources["order_book_df"]
+        order_book_df=sources["order_book_df"],
+        coinglass_df=sources["coinglass_df"],
+        deribit_df=sources["deribit_df"],
+        onchain_df=sources["onchain_df"],
+        etf_df=sources["etf_df"]
     )
     
     latest_row = features_df.iloc[-1].to_dict()
@@ -328,7 +369,11 @@ def get_prediction():
             long_short_df=train_sources["long_short_df"],
             fear_greed_df=train_sources["fear_greed_df"],
             macro_dfs=train_sources["macro_dfs"],
-            order_book_df=train_sources["order_book_df"]
+            order_book_df=train_sources["order_book_df"],
+            coinglass_df=train_sources["coinglass_df"],
+            deribit_df=train_sources["deribit_df"],
+            onchain_df=train_sources["onchain_df"],
+            etf_df=train_sources["etf_df"]
         )
         train_features_df, target = prepare_target(train_features_df, horizon=24, threshold_pct=0.005)
         _LATEST_TRAINING_REPORT = run_walk_forward_validation(

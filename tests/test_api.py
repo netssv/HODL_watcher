@@ -53,7 +53,11 @@ def test_calculate_features_endpoint(mock_fetch):
             "long_short_df": None,
             "fear_greed_df": None,
             "macro_dfs": {},
-            "order_book_df": None
+            "order_book_df": None,
+            "coinglass_df": None,
+            "deribit_df": None,
+            "onchain_df": None,
+            "etf_df": None
         },
         ["some_warning"]
     )
@@ -85,7 +89,11 @@ def test_train_model_insufficient_samples(mock_fetch):
             "long_short_df": None,
             "fear_greed_df": None,
             "macro_dfs": {},
-            "order_book_df": None
+            "order_book_df": None,
+            "coinglass_df": None,
+            "deribit_df": None,
+            "onchain_df": None,
+            "etf_df": None
         },
         []
     )

@@ -16,6 +16,70 @@ from typing import Dict, Any, List, Tuple
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support, log_loss, confusion_matrix
 
+def simulate_trading(y_test: pd.Series, preds: np.ndarray, prices: pd.Series, fee_pct: float = 0.001) -> Dict[str, Any]:
+    """
+    Simulate trading P&L equity curve.
+    preds: 1 (long), -1 (short), 0 (flat)
+    fees: 0.1% per trade (entry and exit)
+    """
+    # Calculate period returns
+    returns = prices.pct_change().shift(-1).fillna(0) # Forward return
+    
+    # Strategy returns (apply position direction)
+    strat_returns = returns * preds
+    
+    # Calculate trading fees (when position changes)
+    pos_changes = np.abs(np.diff(np.insert(preds, 0, 0)))
+    fees = pos_changes * fee_pct
+    
+    net_returns = strat_returns - fees
+    
+    # Equity curves
+    equity_curve = (1 + net_returns).cumprod()
+    bh_equity_curve = (1 + returns).cumprod()
+    
+    # Win rate
+    winning_trades = np.sum(net_returns > 0)
+    total_trades = np.sum(pos_changes > 0)
+    win_rate = winning_trades / total_trades if total_trades > 0 else 0
+    
+    # Max Drawdown
+    roll_max = equity_curve.cummax()
+    drawdown = (equity_curve - roll_max) / roll_max
+    max_dd = drawdown.min()
+    
+    # Sharpe Ratio (annualized, assuming hourly data: 24 * 365 = 8760 periods)
+    mean_ret = net_returns.mean()
+    std_ret = net_returns.std()
+    sharpe = (mean_ret / std_ret) * np.sqrt(8760) if std_ret > 0 else 0
+    
+    # B&H metrics
+    bh_mean_ret = returns.mean()
+    bh_std_ret = returns.std()
+    bh_sharpe = (bh_mean_ret / bh_std_ret) * np.sqrt(8760) if bh_std_ret > 0 else 0
+    bh_roll_max = bh_equity_curve.cummax()
+    bh_drawdown = (bh_equity_curve - bh_roll_max) / bh_roll_max
+    bh_max_dd = bh_drawdown.min()
+
+    # We return the curve downsampled if too large, but for now return full series
+    equity_points = [
+        {"time": str(idx), "strategy": float(eq), "buy_hold": float(bh)}
+        for idx, eq, bh in zip(equity_curve.index, equity_curve.values, bh_equity_curve.values)
+    ]
+    
+    return {
+        "final_return": float(equity_curve.iloc[-1] - 1) if len(equity_curve) > 0 else 0.0,
+        "sharpe": float(sharpe),
+        "max_drawdown": float(max_dd),
+        "win_rate": float(win_rate),
+        "total_trades": int(total_trades),
+        "bh_final_return": float(bh_equity_curve.iloc[-1] - 1) if len(bh_equity_curve) > 0 else 0.0,
+        "bh_sharpe": float(bh_sharpe),
+        "bh_max_drawdown": float(bh_max_dd),
+        "equity_curve": equity_points
+    }
+
+
 
 def prepare_target(df: pd.DataFrame, horizon: int, threshold_pct: float = 0.005) -> Tuple[pd.DataFrame, pd.Series]:
     """
@@ -145,6 +209,10 @@ def run_walk_forward_validation(
             
         cm = confusion_matrix(y_test, preds, labels=[-1, 0, 1]).tolist()
         
+        # Simulate trading
+        prices = df.iloc[test_start:test_end]['close']
+        sim_metrics = simulate_trading(y_test, preds, prices)
+
         fold_metrics.append({
             "fold": fold + 1,
             "train_size": len(X_train),
@@ -157,6 +225,7 @@ def run_walk_forward_validation(
             "confusion_matrix": cm,
             "majority_baseline": float(majority_acc),
             "persistence_baseline": float(persistence_acc),
+            "trading": sim_metrics,
         })
         
         # Accumulate importances
@@ -201,6 +270,14 @@ def run_walk_forward_validation(
     else:
         baseline_comparison = "statistically indistinguishable"
 
+    # Aggregate trading metrics
+    mean_strat_ret = np.mean([f["trading"]["final_return"] for f in fold_metrics])
+    mean_bh_ret = np.mean([f["trading"]["bh_final_return"] for f in fold_metrics])
+    mean_sharpe = np.mean([f["trading"]["sharpe"] for f in fold_metrics])
+    mean_bh_sharpe = np.mean([f["trading"]["bh_sharpe"] for f in fold_metrics])
+    mean_max_dd = np.mean([f["trading"]["max_drawdown"] for f in fold_metrics])
+    mean_win_rate = np.mean([f["trading"]["win_rate"] for f in fold_metrics])
+
     report = {
         "metadata": {
             "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -220,6 +297,14 @@ def run_walk_forward_validation(
             "baselines": {
                 "mean_majority_class": mean_maj_acc,
                 "mean_persistence": mean_pers_acc,
+            },
+            "trading": {
+                "mean_strategy_return": float(mean_strat_ret),
+                "mean_bh_return": float(mean_bh_ret),
+                "mean_sharpe": float(mean_sharpe),
+                "mean_bh_sharpe": float(mean_bh_sharpe),
+                "mean_max_drawdown": float(mean_max_dd),
+                "mean_win_rate": float(mean_win_rate)
             },
             "class_balance": class_balance,
             "class_balance_pct": class_balance_pct,

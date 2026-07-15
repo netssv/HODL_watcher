@@ -43,18 +43,40 @@ def export_agent_payload(
         ls_trend = "falling"
         
     fear_greed = int(market_df.get('fear_greed', 50))
+    atr = float(market_df.get('atr', price * 0.02))
+    regime = float(market_df.get('market_regime', 0))
+    ob_imbalance = float(market_df.get('ob_imbalance_10', 0.0))
     
-    # Formulate confidence note based on walk-forward performance
+    # Feature disagreement logic
+    disagreement = False
+    if (rsi_6 < 40 and ls_val < 0.9) or (rsi_6 > 60 and ls_val > 1.1):
+        disagreement = True
+    if regime == 0:
+        disagreement = True # Ranging/volatile makes trend-following features disagree
+    
+    # Formulate confidence note based on walk-forward performance and feature agreement
     mean_acc = validation_report["overall"]["mean_accuracy"]
     std_acc = validation_report["overall"]["std_accuracy"]
     baseline_comp = validation_report["overall"]["accuracy_vs_naive_baseline"]
     
     if baseline_comp == "worse" or mean_acc < 0.4:
         confidence_note = f"CONFIDENCE LOW: Model accuracy ({mean_acc:.1%}) underperforms naive baselines."
+    elif disagreement:
+        confidence_note = f"CONFIDENCE LOW: High feature disagreement or volatile market regime detected."
     elif std_acc > 0.1:
         confidence_note = f"CONFIDENCE MEDIUM-LOW: High variance ({std_acc:.1%}) across historical validation folds."
     else:
         confidence_note = f"CONFIDENCE MODERATE: Model consistently beats naive baselines across validation folds."
+        
+    # Risk Management Module
+    # Dynamic Stop Loss and Take Profit
+    sl_distance = 2 * atr
+    tp_distance = 3 * atr
+    risk_per_trade_pct = 0.01 # Assume 1% account risk per trade
+    
+    # Position size = Risk_Amount / SL_Distance. 
+    # Return as a relative factor to account equity.
+    position_size_factor = (price * risk_per_trade_pct) / sl_distance if sl_distance > 0 else 0
         
     return {
         "meta": {
@@ -99,7 +121,15 @@ def export_agent_payload(
             "std_accuracy": std_acc,
             "accuracy_vs_naive_baseline": baseline_comp,
             "class_balance": validation_report["overall"]["class_balance"],
+            "trading_metrics": validation_report["overall"].get("trading", {}),
             "folds": validation_report.get("folds", [])
+        },
+        "risk_management": {
+            "position_size_account_pct": position_size_factor * 100,
+            "dynamic_sl_pct": (sl_distance / price) * 100 if price > 0 else 0,
+            "dynamic_tp_pct": (tp_distance / price) * 100 if price > 0 else 0,
+            "max_concurrent_exposure_pct": 20.0,
+            "market_regime": regime
         },
         "news_context": {
             "instructions_for_agent": (

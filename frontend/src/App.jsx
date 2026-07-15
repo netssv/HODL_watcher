@@ -4,7 +4,8 @@ import useSound from 'use-sound';
 import { deriveStrategy } from './utils.jsx';
 import { AppHeader, GuideBanner, ErrorBanner } from './components/Header.jsx';
 import SetupCard, { ApiPipelineCard, MarketSnapshotCard } from './components/Sidebar.jsx';
-import { ProjectionsPanel, StrategyCard, ValidationChart } from './components/ContentPanels.jsx';
+import { ProjectionsPanel, StrategyCard, ValidationChart, RiskManagementCard } from './components/ContentPanels.jsx';
+import TrainModal from './components/TrainModal.jsx';
 
 const API = 'http://localhost:8000';
 const THROTTLE_MS = 5000;
@@ -31,6 +32,7 @@ export default function App() {
   const [strategy, setStrategy]               = useState(null);
   const [loading, setLoading]                 = useState(false);
   const [trainLoading, setTrainLoading]       = useState(false);
+  const [showTrainModal, setShowTrainModal]   = useState(false);
   const [gaps, setGaps]                       = useState([]);
   const [error, setError]                     = useState(null);
   const [lastFetchedTime, setLastFetchedTime] = useState(null);
@@ -62,6 +64,7 @@ export default function App() {
   };
 
   const handleTrain = async () => {
+    setShowTrainModal(true);
     setTrainLoading(true); setError(null);
     try {
       const res = await fetch(`${API}/api/train`, {
@@ -80,6 +83,12 @@ export default function App() {
 
   return (
     <div className={isSimpleMode ? 'simple-mode' : ''}>
+      <TrainModal
+        visible={showTrainModal}
+        trainLoading={trainLoading}
+        error={error}
+        onHide={() => setShowTrainModal(false)}
+      />
       <div className="container">
         <AppHeader
           livePrice={livePrice} isSimpleMode={isSimpleMode} setIsSimpleMode={setIsSimpleMode}
@@ -113,6 +122,7 @@ export default function App() {
               predictionData={predictionData} isSimpleMode={isSimpleMode} thresholdPct={thresholdPct}
             />
             <StrategyCard strategy={strategy} />
+            {!isSimpleMode && <RiskManagementCard riskParams={predictionData?.risk_management} />}
             {!isSimpleMode && <ValidationChart trainingReport={trainingReport} />}
             {predictionData && (
               <footer className="footer-text"><p>{predictionData.disclaimers?.[0]}</p></footer>

@@ -17,3 +17,6 @@ CRYPTOPANIC_API_KEY: str = os.getenv("CRYPTOPANIC_API_KEY", "")
 
 # NewsAPI (free tier, 100 requests/day)
 NEWSAPI_KEY: str = os.getenv("NEWSAPI_KEY", "c05f86cf9bfc4cc0930864c153bbb26b")
+
+# Coinglass API
+COINGLASS_API_KEY: str = os.getenv("COINGLASS_API_KEY", "")

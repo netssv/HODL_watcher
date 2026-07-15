@@ -11,6 +11,22 @@ import pandas as pd
 import numpy as np
 from typing import Dict, Any
 
+def compute_market_regime(df: pd.DataFrame, window: int = 14) -> pd.Series:
+    """
+    Classify market regime using ATR and price bounds.
+    Returns: 1 (trending up), -1 (trending down), 0 (ranging/volatile)
+    """
+    atr = compute_atr(df, window)
+    ma_short = df['close'].rolling(window=window, center=False).mean()
+    ma_long = df['close'].rolling(window=window*3, center=False).mean()
+    
+    # Simple logic: distance between short/long MA normalized by ATR
+    trend_strength = (ma_short - ma_long) / (atr + 1e-9)
+    
+    regime = pd.Series(0, index=df.index)
+    regime[trend_strength > 1.0] = 1   # Trending Up
+    regime[trend_strength < -1.0] = -1 # Trending Down
+    return regime
 
 def compute_rsi(df: pd.DataFrame, window: int) -> pd.Series:
     """
@@ -78,6 +94,10 @@ def build_features(
     fear_greed_df: pd.DataFrame = None,
     macro_dfs: Dict[str, pd.DataFrame] = None,
     order_book_df: pd.DataFrame = None,
+    coinglass_df: pd.DataFrame = None,
+    deribit_df: pd.DataFrame = None,
+    onchain_df: pd.DataFrame = None,
+    etf_df: pd.DataFrame = None,
 ) -> pd.DataFrame:
     """
     Build complete feature matrix aligning timestamps chronologically.
@@ -108,6 +128,12 @@ def build_features(
     df['dist_ma_7'] = (df['close'] - df['ma_7']) / df['ma_7']
     df['dist_ma_25'] = (df['close'] - df['ma_25']) / df['ma_25']
     df['dist_ma_99'] = (df['close'] - df['ma_99']) / df['ma_99']
+
+    # Regime & Multi-timeframe proxies
+    df['market_regime'] = compute_market_regime(df)
+    # 4h proxy (close vs close 4 periods ago if hourly)
+    df['momentum_4h'] = df['close'] / df['close'].shift(4) - 1
+    df['momentum_24h'] = df['close'] / df['close'].shift(24) - 1
 
     # 2. Volume relative to MA
     df['vol_ma_20'] = df['volume'].rolling(window=20, center=False).mean()
@@ -168,9 +194,8 @@ def build_features(
                 )
                 df.rename(columns={'value': f'macro_{name}'}, inplace=True)
 
-    # 6. Join order book features (distance to large bids/asks)
+    # 6. Join order book features (distance to large bids/asks & imbalance)
     if order_book_df is not None and not order_book_df.empty:
-        # For simplicity, calculate distance to top bid/ask support/resistance
         bids = order_book_df[order_book_df['side'] == 'bid']
         asks = order_book_df[order_book_df['side'] == 'ask']
         
@@ -179,6 +204,28 @@ def build_features(
         
         df['dist_best_bid'] = (df['close'] - best_bid) / (best_bid + 1e-9)
         df['dist_best_ask'] = (best_ask - df['close']) / (df['close'] + 1e-9)
+
+        # Multi-level imbalance: volume of top 10 bids vs top 10 asks
+        top_10_bid_vol = bids.nlargest(10, 'price')['quantity'].sum() if not bids.empty else 0
+        top_10_ask_vol = asks.nsmallest(10, 'price')['quantity'].sum() if not asks.empty else 0
+        df['ob_imbalance_10'] = (top_10_bid_vol - top_10_ask_vol) / (top_10_bid_vol + top_10_ask_vol + 1e-9)
+        
+        # We can expand to 50 levels
+        top_50_bid_vol = bids.nlargest(50, 'price')['quantity'].sum() if not bids.empty else 0
+        top_50_ask_vol = asks.nsmallest(50, 'price')['quantity'].sum() if not asks.empty else 0
+        df['ob_imbalance_50'] = (top_50_bid_vol - top_50_ask_vol) / (top_50_bid_vol + top_50_ask_vol + 1e-9)
+
+    # 7. Join Coinglass, Deribit, Onchain, ETF
+    for name, extra_df in [('coinglass', coinglass_df), ('deribit', deribit_df), ('onchain', onchain_df), ('etf', etf_df)]:
+        if extra_df is not None and not extra_df.empty:
+            extra_sorted = extra_df.reset_index().sort_values('timestamp')
+            extra_sorted['timestamp'] = pd.to_datetime(extra_sorted['timestamp'], utc=True).dt.as_unit('ns')
+            df = pd.merge_asof(
+                df.sort_values('timestamp'),
+                extra_sorted,
+                on='timestamp',
+                direction='backward'
+            )
 
     df.set_index('timestamp', inplace=True)
     return df

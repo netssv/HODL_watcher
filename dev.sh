@@ -44,21 +44,36 @@ info() { echo -e "${MAGENTA}ℹ${RESET}  $*"; }
 
 kill_port() {
   local port=$1
-  local pid
-  pid=$(lsof -ti :"$port" 2>/dev/null || true)
-  if [[ -n "$pid" ]]; then
-    warn "Killing existing process on port $port (PID $pid)"
-    kill "$pid" 2>/dev/null || true
-    sleep 0.5
+  # Prefer fuser (works without lsof), fall back to lsof
+  if command -v fuser &>/dev/null; then
+    if fuser "${port}/tcp" &>/dev/null 2>&1; then
+      warn "Killing existing process on port $port"
+      fuser -k "${port}/tcp" 2>/dev/null || true
+    fi
+  elif command -v lsof &>/dev/null; then
+    local pid
+    pid=$(lsof -ti :"$port" 2>/dev/null || true)
+    if [[ -n "$pid" ]]; then
+      warn "Killing existing process on port $port (PID $pid)"
+      kill "$pid" 2>/dev/null || true
+    fi
   fi
+  # Wait until the OS releases the port (max 3s)
+  local i
+  for i in 1 2 3; do
+    ss -tlnp 2>/dev/null | grep -q ":${port} " || return 0
+    sleep 1
+  done
 }
 
 wait_for_port() {
-  local port=$1 name=$2 retries=20
+  local port=$1 name=$2 retries=30
   for ((i=1; i<=retries; i++)); do
-    if nc -z 127.0.0.1 "$port" 2>/dev/null; then
-      ok "$name is up on port $port"
-      return 0
+    # Use ss if nc is unavailable
+    if command -v nc &>/dev/null; then
+      nc -z 127.0.0.1 "$port" 2>/dev/null && { ok "$name is up on port $port"; return 0; }
+    else
+      ss -tlnp 2>/dev/null | grep -q ":${port} " && { ok "$name is up on port $port"; return 0; }
     fi
     echo -ne "${DIM}  waiting for $name... ($i/$retries)\r${RESET}"
     sleep 1

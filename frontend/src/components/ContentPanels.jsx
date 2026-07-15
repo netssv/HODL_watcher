@@ -1,5 +1,5 @@
 import React from 'react';
-import { Cpu, Info } from 'lucide-react';
+import { Cpu, Info, ShieldAlert } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -73,6 +73,13 @@ function AdvancedIndicators({ snapshot }) {
           <span style={{ fontSize: '0.55rem', color: 'var(--text-secondary)' }}>Trend: {ls.trend}</span>
         </div>
       </div>
+      {snapshot.market_regime !== undefined && (
+        <div style={{ marginTop: '0.75rem', padding: '0.5rem', backgroundColor: snapshot.market_regime === 0 ? 'rgba(245, 158, 11, 0.1)' : 'rgba(16, 185, 129, 0.1)', borderRadius: '4px', border: `1px solid ${snapshot.market_regime === 0 ? '#f59e0b' : '#10b981'}` }}>
+          <span style={{ fontSize: '0.7rem', color: snapshot.market_regime === 0 ? '#f59e0b' : '#10b981', fontWeight: 600 }}>
+            {snapshot.market_regime === 1 ? 'Regime: Trending Up' : snapshot.market_regime === -1 ? 'Regime: Trending Down' : 'Regime: Ranging / Volatile'}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -144,29 +151,72 @@ export function StrategyCard({ strategy }) {
   );
 }
 
+// ── Risk Management card ─────────────────────────────────────────────
+export function RiskManagementCard({ riskParams }) {
+  if (!riskParams) return null;
+  return (
+    <section className="card">
+      <div className="card-header">
+        <h2><ShieldAlert className="w-4 h-4 text-orange-400" />Risk Management</h2>
+      </div>
+      <div className="strategy-grid">
+        <div className="strategy-box">
+          <span className="strategy-box-title">Suggested Position Size</span>
+          <span className="strategy-box-action" style={{ color: '#fbbf24' }}>{riskParams.position_size_account_pct.toFixed(2)}%</span>
+          <p className="strategy-box-desc">Account capital per trade</p>
+        </div>
+        <div className="strategy-box">
+          <span className="strategy-box-title">Dynamic SL / TP</span>
+          <div>
+            <span className="snapshot-val" style={{ fontSize: '0.8rem', color: '#f43f5e' }}>-{riskParams.dynamic_sl_pct.toFixed(1)}%</span>
+            <span className="snapshot-val" style={{ fontSize: '0.8rem', color: '#10b981', marginLeft: '0.5rem' }}>+{riskParams.dynamic_tp_pct.toFixed(1)}%</span>
+          </div>
+          <p className="strategy-box-desc">Based on recent volatility (ATR)</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ── Walk-Forward validation chart ────────────────────────────────────────────
 export function ValidationChart({ trainingReport }) {
   const data = trainingReport?.folds?.map(f => ({
     fold: `F${f.fold}`,
     Accuracy: parseFloat((f.accuracy * 100).toFixed(1)),
     Baseline: parseFloat((f.majority_baseline * 100).toFixed(1)),
+    StrategyReturn: parseFloat((f.trading?.final_return * 100).toFixed(1) || 0),
+    BHReturn: parseFloat((f.trading?.bh_final_return * 100).toFixed(1) || 0),
   })) || [];
+
+  const trading = trainingReport?.overall?.trading_metrics;
 
   return (
     <section className="card">
       <div className="card-header"><h2>Walk-Forward Validation Trend</h2></div>
       {data.length > 0 ? (
-        <div style={{ height: '176px' }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="fold" stroke="var(--text-muted)" fontSize={9} />
-              <YAxis stroke="var(--text-muted)" fontSize={9} domain={[0, 100]} />
-              <Tooltip contentStyle={{ backgroundColor: '#0d1117', borderColor: 'var(--border-color)', fontSize: 11 }} />
-              <Line type="monotone" dataKey="Accuracy" stroke="#10b981" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="Baseline" stroke="#6366f1" strokeDasharray="5 5" strokeWidth={1} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {trading && (
+            <div className="status-grid" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
+              <div className="strategy-box"><span className="strategy-box-title">Sharpe Ratio</span><span className="snapshot-val" style={{fontSize:'0.8rem'}}>{trading.mean_sharpe.toFixed(2)}</span></div>
+              <div className="strategy-box"><span className="strategy-box-title">Max Drawdown</span><span className="snapshot-val" style={{fontSize:'0.8rem',color:'#f43f5e'}}>{(trading.mean_max_drawdown * 100).toFixed(1)}%</span></div>
+              <div className="strategy-box"><span className="strategy-box-title">Win Rate</span><span className="snapshot-val" style={{fontSize:'0.8rem',color:'#10b981'}}>{(trading.mean_win_rate * 100).toFixed(1)}%</span></div>
+              <div className="strategy-box"><span className="strategy-box-title">Avg Fold Return</span><span className="snapshot-val" style={{fontSize:'0.8rem'}}>{(trading.mean_strategy_return * 100).toFixed(1)}%</span></div>
+            </div>
+          )}
+          <div style={{ height: '176px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="fold" stroke="var(--text-muted)" fontSize={9} />
+                <YAxis yAxisId="left" stroke="var(--text-muted)" fontSize={9} domain={[0, 100]} />
+                <YAxis yAxisId="right" orientation="right" stroke="#fbbf24" fontSize={9} />
+                <Tooltip contentStyle={{ backgroundColor: '#0d1117', borderColor: 'var(--border-color)', fontSize: 11 }} />
+                <Line yAxisId="left" type="monotone" dataKey="Accuracy" stroke="#10b981" strokeWidth={2} dot={false} />
+                <Line yAxisId="left" type="monotone" dataKey="Baseline" stroke="#6366f1" strokeDasharray="5 5" strokeWidth={1} dot={false} />
+                <Line yAxisId="right" type="monotone" dataKey="StrategyReturn" stroke="#fbbf24" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       ) : (
         <div className="empty-chart-container">

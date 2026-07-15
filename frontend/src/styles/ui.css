@@ -195,3 +195,295 @@
   border-color: #cbd5e1;
   color: #334155;
 }
+
+/* --------------------------------------------------------------------- 
+   27. TRAIN PROGRESS MODAL
+   --------------------------------------------------------------------- */
+
+/* Backdrop — sits above everything */
+.train-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(4, 6, 12, 0.65);
+  backdrop-filter: blur(4px);
+  animation: fade-in-up 0.18s ease;
+}
+
+/* Modal card */
+.train-modal {
+  width: min(420px, calc(100vw - 2rem));
+  background: #0d1117;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  border-radius: 6px;
+  box-shadow:
+    0 0 0 1px rgba(59,130,246,0.12),
+    0 24px 64px rgba(0,0,0,0.6),
+    0 0 60px rgba(59,130,246,0.07);
+  overflow: hidden;
+  animation: float-up-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.simple-mode .train-modal {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 8px 40px rgba(15,23,42,0.15);
+}
+
+/* Header */
+.train-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  background: rgba(255,255,255,0.02);
+}
+.simple-mode .train-modal-header {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.train-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--text-primary);
+}
+
+/* Animated pulse dot (while running) */
+.train-modal-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-brand);
+  animation: pulse-dot 1.2s ease-in-out infinite;
+  box-shadow: 0 0 8px rgba(59,130,246,0.6);
+  flex-shrink: 0;
+}
+
+.train-modal-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.train-modal-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.train-modal-btn:hover {
+  background: rgba(255,255,255,0.08);
+  color: var(--text-primary);
+  border-color: rgba(255,255,255,0.14);
+}
+.simple-mode .train-modal-btn {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #475569;
+}
+.simple-mode .train-modal-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+/* Progress bar */
+.train-modal-progressbar {
+  height: 3px;
+  background: rgba(255,255,255,0.04);
+  overflow: hidden;
+}
+.simple-mode .train-modal-progressbar { background: #e2e8f0; }
+
+.train-modal-progressbar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  border-radius: 2px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.train-modal-progressbar-fill.done {
+  background: linear-gradient(90deg, var(--up-color), #34d399);
+}
+.train-modal-progressbar-fill.failed {
+  background: linear-gradient(90deg, var(--down-color), #fb7185);
+}
+
+/* Steps list */
+.train-modal-steps {
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.train-modal-step {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-family: var(--text-mono);
+  transition: background 0.2s;
+}
+
+.train-modal-step--active {
+  background: rgba(59,130,246,0.08);
+  border: 1px solid rgba(59,130,246,0.18);
+}
+.train-modal-step--done   { opacity: 0.75; }
+.train-modal-step--pending { opacity: 0.35; }
+.train-modal-step--error {
+  background: rgba(244,63,94,0.08);
+  border: 1px solid rgba(244,63,94,0.2);
+}
+
+.simple-mode .train-modal-step--active {
+  background: rgba(37,99,235,0.06);
+  border-color: rgba(37,99,235,0.2);
+}
+
+.train-modal-step-label {
+  flex: 1;
+  color: var(--text-primary);
+}
+.train-modal-step--done .train-modal-step-label   { color: var(--text-secondary); }
+.train-modal-step--pending .train-modal-step-label { color: var(--text-muted); }
+
+.train-modal-step-time {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  font-family: var(--text-mono);
+  margin-left: auto;
+}
+
+/* Spinner for active step icon */
+.train-modal-spin {
+  animation: spinner 0.9s linear infinite;
+}
+
+/* Footer */
+.train-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  background: rgba(255,255,255,0.015);
+}
+.simple-mode .train-modal-footer {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.train-modal-footer-note {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  font-family: var(--text-mono);
+  flex: 1;
+}
+
+.blink { animation: number-tick 1.2s ease infinite; }
+
+.train-modal-hide-btn {
+  font-size: 0.62rem;
+  font-weight: 600;
+  padding: 0.3rem 0.7rem;
+  border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.05);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.train-modal-hide-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: var(--text-primary);
+}
+.simple-mode .train-modal-hide-btn {
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+  color: #475569;
+}
+.simple-mode .train-modal-hide-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+/* --------------------------------------------------------------------- 
+   28. MINIMIZED PILL — floats bottom-right when done
+   --------------------------------------------------------------------- */
+.train-modal-pill {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.75rem 0.45rem 0.6rem;
+  background: #0d1117;
+  border: 1px solid rgba(16,185,129,0.35);
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4), 0 0 20px rgba(16,185,129,0.08);
+  animation: float-up-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s;
+}
+.train-modal-pill:hover {
+  border-color: rgba(16,185,129,0.6);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5), 0 0 28px rgba(16,185,129,0.15);
+  color: var(--text-primary);
+}
+
+.simple-mode .train-modal-pill {
+  background: #ffffff;
+  border-color: #a7f3d0;
+  box-shadow: 0 4px 16px rgba(15,23,42,0.12);
+  color: #0f172a;
+}
+
+.train-modal-pill-hide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  padding: 0;
+  margin-left: 0.2rem;
+}
+.train-modal-pill-hide:hover {
+  background: rgba(244,63,94,0.15);
+  border-color: rgba(244,63,94,0.3);
+  color: var(--down-color);
+}
+.simple-mode .train-modal-pill-hide {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+}
