@@ -1,0 +1,203 @@
+/* --------------------------------------------------------------------- 
+   10. SLIDERS + CONTROLS
+   --------------------------------------------------------------------- */
+.slider-group {
+  margin-bottom: 1rem;
+}
+.slider-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.35rem;
+  font-family: var(--text-mono);
+}
+.slider-header .value {
+  color: var(--accent-brand);
+  font-weight: 600;
+}
+.slider-input {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(to right, var(--accent-brand) 0%, rgba(59,130,246,0.2) 0%);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.slider-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--accent-brand);
+  cursor: pointer;
+  box-shadow: 0 0 8px var(--accent-glow);
+  transition: transform 0.15s;
+}
+.slider-input::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+/* --------------------------------------------------------------------- 
+   11. FEATURE BADGES
+   --------------------------------------------------------------------- */
+.badge-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.badge-btn {
+  font-size: 0.6rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 2px;
+  border: 1px solid var(--border-color);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-family: var(--text-mono);
+}
+.badge-btn:hover {
+  border-color: var(--accent-brand);
+  color: var(--accent-brand);
+}
+.badge-btn-active {
+  background: rgba(59,130,246,0.12);
+  border-color: var(--accent-brand);
+  color: var(--accent-brand);
+}
+
+/* --------------------------------------------------------------------- 
+   12. STATUS GRID — API pipeline
+   --------------------------------------------------------------------- */
+.status-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.status-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.65rem;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-color);
+  border-radius: 2px;
+  font-size: 0.6rem;
+  font-family: var(--text-mono);
+}
+.simple-mode .status-item { background: #f8fafc; border-color: #e2e8f0; }
+.status-name { color: var(--text-secondary); }
+.status-badge {
+  font-size: 0.55rem;
+  font-weight: 700;
+  padding: 0.1rem 0.35rem;
+  border-radius: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.status-online  { background: rgba(16,185,129,0.15); color: #10b981; }
+.status-offline { background: rgba(244,63,94,0.15);  color: #f43f5e; }
+.status-unknown { background: rgba(148,163,184,0.1); color: #94a3b8; }
+
+/* --------------------------------------------------------------------- 
+   13. MARKET SNAPSHOT
+   --------------------------------------------------------------------- */
+.snapshot-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.snapshot-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.6rem 0.75rem;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-color);
+  border-radius: 2px;
+  transition: border-color 0.2s;
+}
+.snapshot-box:hover { border-color: var(--border-color-hover); }
+.simple-mode .snapshot-box { background: #f8fafc; border-color: #e2e8f0; }
+.snapshot-label {
+  font-size: 0.55rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-family: var(--text-mono);
+}
+.snapshot-val {
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-family: var(--text-mono);
+  animation: ticker-flash 0.4s ease;
+}
+
+/* --------------------------------------------------------------------- 
+   14. PROJECTION CARDS — Binance-style bold data cells
+   --------------------------------------------------------------------- */
+.projection-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+.projection-card {
+  padding: 1rem;
+  border-radius: 2px;
+  border: 1px solid var(--border-color);
+  text-align: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: default;
+  position: relative;
+  overflow: hidden;
+}
+.projection-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, transparent 60%);
+  pointer-events: none;
+}
+.projection-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+}
+.projection-card-label {
+  font-size: 0.55rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-family: var(--text-mono);
+}
+.projection-card-val {
+  font-size: 2rem;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  margin: 0.35rem 0 0.15rem;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.projection-card-sub {
+  font-size: 0.55rem;
+  color: var(--text-secondary);
+  font-family: var(--text-mono);
+}
+
+.proj-down  { background: var(--down-bg);    border-color: rgba(244,63,94,0.18); }
+.proj-down .projection-card-label { color: var(--down-color); }
+.proj-down .projection-card-val   { color: var(--down-color); }
+
+.proj-sideways { background: var(--neutral-bg); }
+.proj-sideways .projection-card-label { color: var(--neutral-color); }
+.proj-sideways .projection-card-val   { color: var(--text-primary); }
+
+.proj-up   { background: var(--up-bg);       border-color: rgba(16,185,129,0.18); }
+.proj-up .projection-card-label { color: var(--up-color); }
+.proj-up .projection-card-val   { color: var(--up-color); }
+

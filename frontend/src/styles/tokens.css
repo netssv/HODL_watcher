@@ -1,0 +1,157 @@
+/* =====================================================================
+   HODL Watcher — 2026 Design System
+   Inspired by: TradingView, Binance, Linear, Vercel, Radix Themes
+   Design language: Data-terminal dark mode + electric blue accent
+   ===================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* --------------------------------------------------------------------- 
+   1. DESIGN TOKENS
+   --------------------------------------------------------------------- */
+:root {
+  /* Market direction — strict semantic use only */
+  --up-color:     #10b981;
+  --up-bg:        rgba(16, 185, 129, 0.10);
+  --up-glow:      rgba(16, 185, 129, 0.20);
+  --down-color:   #f43f5e;
+  --down-bg:      rgba(244, 63, 94, 0.10);
+  --down-glow:    rgba(244, 63, 94, 0.20);
+  --neutral-color: #94a3b8;
+  --neutral-bg:   rgba(148, 163, 184, 0.08);
+
+  /* Baseline badges */
+  --baseline-better-color:           #34d399;
+  --baseline-better-bg:              rgba(52, 211, 153, 0.12);
+  --baseline-worse-color:            #f87171;
+  --baseline-worse-bg:               rgba(248, 113, 113, 0.12);
+  --baseline-indistinguishable-color: #94a3b8;
+  --baseline-indistinguishable-bg:   rgba(148, 163, 184, 0.08);
+
+  /* Single functional accent — Electric Blue (data / analysis) */
+  --accent-brand:       #3b82f6;
+  --accent-brand-hover: #2563eb;
+  --accent-glow:        rgba(59, 130, 246, 0.25);
+
+  /* Surfaces */
+  --bg-primary:   #080a0f;
+  --bg-secondary: #0d1117;
+  --bg-card:      rgba(13, 17, 23, 0.85);
+  --bg-card-hover: rgba(17, 22, 32, 0.95);
+  --bg-input:     rgba(255, 255, 255, 0.04);
+
+  /* Borders */
+  --border-color:       rgba(255, 255, 255, 0.07);
+  --border-color-hover: rgba(255, 255, 255, 0.14);
+  --border-accent:      rgba(59, 130, 246, 0.4);
+
+  /* Typography */
+  --text-primary:   #f0f4f8;
+  --text-secondary: #8b96a7;
+  --text-muted:     #4a5568;
+  --text-mono:      'JetBrains Mono', monospace;
+
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --------------------------------------------------------------------- 
+   2. BASE BACKGROUND — subtle animated mesh gradient
+   --------------------------------------------------------------------- */
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 60% 40% at 80% 10%, rgba(59, 130, 246, 0.05) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 30% at 10% 90%, rgba(16, 185, 129, 0.03) 0%, transparent 60%),
+    var(--bg-primary);
+  background-attachment: fixed;
+}
+
+/* Subtle scan-line overlay on dark mode body */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  z-index: 0;
+}
+
+/* --------------------------------------------------------------------- 
+   3. SIMPLE MODE OVERRIDES
+   --------------------------------------------------------------------- */
+.simple-mode {
+  --bg-primary:   #f4f6f9;
+  --bg-secondary: #edf0f5;
+  --bg-card:      #ffffff;
+  --bg-card-hover: #fafbfc;
+  --bg-input:     #f8fafc;
+  --border-color:       #dde2ea;
+  --border-color-hover: #b8c0cc;
+  --text-primary:   #0f172a;
+  --text-secondary: #475569;
+  --text-muted:     #94a3b8;
+  --accent-brand: #2563eb;
+  --up-bg:   rgba(16, 185, 129, 0.08);
+  --up-color: #059669;
+  --down-bg:   rgba(244, 63, 94, 0.08);
+  --down-color: #dc2626;
+  --neutral-bg: #f1f5f9;
+  --neutral-color: #64748b;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+}
+.simple-mode body::before { display: none; }
+.simple-mode body { background: var(--bg-primary); }
+.simple-mode .card { box-shadow: 0 1px 8px rgba(15, 23, 42, 0.06), 0 0 0 1px rgba(0,0,0,0.04); }
+
+/* --------------------------------------------------------------------- 
+   4. KEYFRAME ANIMATIONS — 2026 kinetic micro-interactions
+   --------------------------------------------------------------------- */
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.6); opacity: 0.6; }
+}
+@keyframes scan-line {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes number-tick {
+  0%, 100% { opacity: 1; }
+  40% { opacity: 0.7; }
+}
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 8px var(--accent-glow); }
+  50% { box-shadow: 0 0 20px var(--accent-glow), 0 0 40px rgba(59,130,246,0.1); }
+}
+@keyframes border-shimmer {
+  0%   { border-color: rgba(59, 130, 246, 0.15); }
+  50%  { border-color: rgba(59, 130, 246, 0.45); }
+  100% { border-color: rgba(59, 130, 246, 0.15); }
+}
+@keyframes float-up-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes spinner {
+  to { transform: rotate(360deg); }
+}
+@keyframes ticker-flash {
+  0%, 100% { opacity: 1; }
+  30% { opacity: 0.5; }
+}
+

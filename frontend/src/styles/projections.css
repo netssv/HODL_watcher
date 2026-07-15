@@ -1,0 +1,119 @@
+/* --------------------------------------------------------------------- 
+   15. PROBABILITY BAR — stacked, animated
+   --------------------------------------------------------------------- */
+.probability-bar-container {
+  display: flex;
+  height: 5px;
+  width: 100%;
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 0.85rem 0 0.4rem;
+  background: rgba(255,255,255,0.05);
+}
+.probability-bar-down     { background: var(--down-color); height: 100%; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+.probability-bar-sideways { background: var(--neutral-color); height: 100%; transition: width 0.6s cubic-bezier(0.4,0,0.2,1) 0.1s; }
+.probability-bar-up       { background: var(--up-color); height: 100%; transition: width 0.6s cubic-bezier(0.4,0,0.2,1) 0.2s; }
+
+/* --------------------------------------------------------------------- 
+   16. BASELINE BADGE
+   --------------------------------------------------------------------- */
+.badge-beats-naive {
+  font-size: 0.55rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 2px;
+  border: 1px solid transparent;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-family: var(--text-mono);
+}
+.badge-better          { background: var(--baseline-better-bg); color: var(--baseline-better-color); border-color: rgba(52,211,153,0.3); }
+.badge-worse           { background: var(--baseline-worse-bg);  color: var(--baseline-worse-color);  border-color: rgba(248,113,113,0.3); }
+.badge-indistinguishable { background: var(--baseline-indistinguishable-bg); color: var(--baseline-indistinguishable-color); border-color: rgba(148,163,184,0.2); }
+
+/* --------------------------------------------------------------------- 
+   17. TOOLTIP & INLINE EXPLAINERS
+   --------------------------------------------------------------------- */
+.info-tooltip-trigger {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: color 0.15s;
+}
+.info-tooltip-trigger:hover { color: var(--text-primary); }
+.term-explainer-inline {
+  font-size: 0.6rem;
+  color: var(--text-secondary);
+  background: rgba(15,23,42,0.9);
+  border: 1px solid var(--border-color);
+  padding: 0.3rem 0.5rem;
+  border-radius: 2px;
+  margin-top: 0.25rem;
+  animation: fade-in-up 0.15s ease;
+}
+.simple-mode .term-explainer-inline {
+  background: #f1f5f9;
+  color: #334155;
+  border-color: #cbd5e1;
+}
+
+/* --------------------------------------------------------------------- 
+   18. STRATEGY BOXES
+   --------------------------------------------------------------------- */
+.strategy-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.6rem;
+}
+@media (min-width: 640px) {
+  .strategy-grid { grid-template-columns: 1fr 1fr; }
+}
+.strategy-box {
+  padding: 0.75rem;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-color);
+  border-radius: 2px;
+  transition: border-color 0.2s;
+}
+.strategy-box:hover { border-color: var(--border-color-hover); }
+.simple-mode .strategy-box { background: #f8fafc; border-color: #e2e8f0; }
+.strategy-box-title  { font-size: 0.55rem; font-weight: 700; text-transform: uppercase; color: var(--text-secondary); display: block; margin-bottom: 0.2rem; letter-spacing: 0.07em; font-family: var(--text-mono); }
+.strategy-box-action { font-size: 0.8rem; font-weight: 700; }
+.strategy-box-desc   { font-size: 0.65rem; color: var(--text-secondary); margin-top: 0.2rem; }
+
+/* --------------------------------------------------------------------- 
+   19. FRIENDLY SIMPLE MODE PROJECTIONS
+   --------------------------------------------------------------------- */
+.friendly-badge {
+  font-size: 1.35rem;
+  font-weight: 800;
+  text-align: center;
+  padding: 1.5rem;
+  border-radius: 2px;
+  border: 1px solid transparent;
+  width: 100%;
+  animation: float-up-in 0.4s ease both;
+  letter-spacing: -0.01em;
+}
+.friendly-up      { background: var(--up-bg);   color: var(--up-color);   border-color: rgba(16,185,129,0.3); }
+.friendly-down    { background: var(--down-bg); color: var(--down-color); border-color: rgba(244,63,94,0.3); }
+.friendly-neutral { background: var(--neutral-bg); color: var(--neutral-color); border-color: var(--border-color); }
+
+/* --------------------------------------------------------------------- 
+   20. VALIDATION CHART (recharts)
+   --------------------------------------------------------------------- */
+.empty-chart-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 160px;
+  background: rgba(255,255,255,0.01);
+  border: 1px dashed var(--border-color);
+  border-radius: 2px;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  gap: 0.5rem;
+}
+

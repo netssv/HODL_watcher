@@ -1,0 +1,197 @@
+/* --------------------------------------------------------------------- 
+   21. CANDLESTICK CHART SHELL — Binance-style panel
+   --------------------------------------------------------------------- */
+.chart-shell {
+  margin-top: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 2px;
+  background: #0a0d12;
+  overflow: hidden;
+  transition: border-color 0.3s;
+  animation: border-shimmer 4s ease infinite;
+}
+.simple-mode .chart-shell {
+  background: #ffffff;
+  animation: none;
+  border-color: #e2e8f0;
+}
+
+/* OHLC header bar */
+.ohlc-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255,255,255,0.02);
+  border-bottom: 1px solid var(--border-color);
+  font-family: var(--text-mono);
+  font-size: 0.65rem;
+  flex-wrap: wrap;
+  min-height: 32px;
+}
+.simple-mode .ohlc-bar { background: #f8fafc; border-color: #e2e8f0; }
+.ohlc-bar--skeleton { background: rgba(255,255,255,0.02); }
+.ohlc-pair {
+  font-weight: 700;
+  font-size: 0.7rem;
+  color: var(--text-primary);
+  letter-spacing: 0.03em;
+}
+.ohlc-price {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  animation: ticker-flash 0.3s ease;
+}
+.ohlc-change {
+  font-size: 0.65rem;
+  font-weight: 600;
+}
+.ohlc-cell {
+  font-size: 0.6rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.ohlc-label {
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-right: 0.25rem;
+}
+
+/* Chart overlay (loading / error) */
+.chart-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8,10,15,0.8);
+  z-index: 2;
+}
+.chart-loading-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(59,130,246,0.2);
+  border-top-color: var(--accent-brand);
+  border-radius: 50%;
+  animation: spinner 0.8s linear infinite;
+}
+
+/* LIVE badge */
+.chart-live-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.65rem;
+  font-family: var(--text-mono);
+  font-size: 0.55rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.02);
+  border-top: 1px solid var(--border-color);
+}
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  animation: pulse-dot 2s ease-in-out infinite;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px rgba(16,185,129,0.6);
+}
+
+/* --------------------------------------------------------------------- 
+   22. RECALIBRATE BUTTON — animated
+   --------------------------------------------------------------------- */
+.btn-recalibrate {
+  width: 100%;
+  justify-content: center;
+  margin-top: 0.5rem;
+  padding: 0.65rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.btn-recalibrate::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 60%);
+  pointer-events: none;
+}
+.btn-recalibrate:hover {
+  box-shadow: 0 0 20px var(--accent-glow), 0 4px 12px rgba(0,0,0,0.4);
+  transform: translateY(-1px);
+}
+.btn-recalibrate:active { transform: translateY(0); }
+.btn-recalibrate:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* --------------------------------------------------------------------- 
+   23. TRAIN LOADING PROGRESS LINE
+   --------------------------------------------------------------------- */
+.train-progress {
+  height: 2px;
+  width: 100%;
+  background: rgba(59,130,246,0.1);
+  border-radius: 1px;
+  margin-top: 0.5rem;
+  overflow: hidden;
+}
+.train-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-brand), #60a5fa);
+  border-radius: 1px;
+  animation: scan-line 1.5s linear infinite;
+  width: 40%;
+}
+
+/* --------------------------------------------------------------------- 
+   24. FOOTER
+   --------------------------------------------------------------------- */
+.footer-text {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  text-align: center;
+  font-family: var(--text-mono);
+}
+
+/* --------------------------------------------------------------------- 
+   25. ANIMATE SPIN (for refresh icon)
+   --------------------------------------------------------------------- */
+.animate-spin { animation: spinner 1s linear infinite; }
+
+/* --------------------------------------------------------------------- 
+   26. TERM EXPLAINER POPOVER
+   --------------------------------------------------------------------- */
+.term-explainer {
+  display: inline-block;
+  font-size: 0.6rem;
+  color: var(--text-secondary);
+  background: rgba(15,23,42,0.95);
+  border: 1px solid var(--border-color);
+  padding: 0.3rem 0.5rem;
+  border-radius: 2px;
+  margin-left: 0.5rem;
+  animation: fade-in-up 0.15s ease;
+}
+.simple-mode .term-explainer {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
