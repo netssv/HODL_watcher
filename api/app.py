@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 
 from data_ingestion import (
     binance_spot, binance_futures, fear_greed, fred_macro,
-    coinglass, deribit, onchain_metrics, etf_flows
+    coinglass, deribit, onchain_metrics, etf_flows, news_cryptopanic
 )
 from features.builder import build_features
 from model.validation import prepare_target, run_walk_forward_validation
@@ -186,6 +186,12 @@ def _fetch_all_sources(limit: int = 500, interval: str = "1h") -> Tuple[Dict[str
     except Exception as e:
         data_gaps.append(f"etf_flows: {str(e)}")
 
+    news_df = None
+    try:
+        news_df = news_cryptopanic.get_news(currencies="BTC", limit=10)
+    except Exception as e:
+        data_gaps.append(f"cryptopanic_news: {str(e)}")
+
     sources = {
         "spot_df": spot_df,
         "futures_df": futures_df,
@@ -198,6 +204,7 @@ def _fetch_all_sources(limit: int = 500, interval: str = "1h") -> Tuple[Dict[str
         "deribit_df": deribit_df,
         "onchain_df": onchain_df,
         "etf_df": etf_df,
+        "news_df": news_df,
     }
     
     return sources, data_gaps
@@ -414,6 +421,22 @@ def get_prediction():
         order_book_walls=order_book_walls,
         horizon_hours=_LATEST_TRAINING_REPORT["metadata"]["horizon_periods"]
     )
+    
+    # Attach news to payload under a new key if it exists
+    if sources.get("news_df") is not None and not sources["news_df"].empty:
+        # Convert DatetimeIndex to string for JSON serialization
+        news_records = []
+        for dt, row in sources["news_df"].iterrows():
+            news_records.append({
+                "published_at": str(dt),
+                "title": str(row["title"]),
+                "source": str(row["source"]),
+                "sentiment": str(row["sentiment"]) if pd.notna(row["sentiment"]) else None,
+                "url": str(row["url"])
+            })
+        payload["news"] = news_records
+    else:
+        payload["news"] = []
     
     return PredictResponse(
         payload=payload,

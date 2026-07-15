@@ -2,34 +2,46 @@ import React from 'react';
 import { BookOpen, HelpCircle, Info, ShieldAlert, RefreshCw, ToggleLeft, ToggleRight } from 'lucide-react';
 
 // ── Methodology Guide banner ──────────────────────────────────────────────────
-export function GuideBanner({ isSimpleMode, showEmbargoTooltip, setShowEmbargoTooltip }) {
+export function GuideBanner({ isSimpleMode }) {
   return (
-    <section className="banner banner-guide">
+    <section className="banner banner-guide" style={{ padding: '1rem' }}>
       <div style={{ width: '100%' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold', color: isSimpleMode ? '#0f172a' : '#ffffff', marginBottom: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold', color: isSimpleMode ? '#0f172a' : '#ffffff', marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>
           <Info className="w-4 h-4 text-blue-500" />
           Technical Methodology
         </div>
-        <div className="banner-guide-grid">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div>
-            <strong>Chronological Splits:</strong> We test strictly in time-order sequence to prevent looking into the future.
-          </div>
-          <div>
-            <strong>
-              24-Hour Embargo
-              <HelpCircle className="w-3 h-3 text-blue-400 ml-1 cursor-pointer" style={{ display: 'inline', marginLeft: 4 }} onClick={() => setShowEmbargoTooltip(v => !v)} />
-            </strong>
-            {showEmbargoTooltip && (
-              <div className="term-explainer-inline">
-                Buffer interval separating train/test cuts to nullify overlap and autocorrelation.
-              </div>
-            )}
-            <div style={{ marginTop: '0.2rem', fontSize: '0.65rem' }}>
-              A mandatory buffer is used between train/test cuts to prevent data leakage.
+            <strong>1. Walk-Forward Testing Accuracy:</strong>
+            <div style={{ fontSize: '0.65rem', marginTop: '0.2rem', color: 'var(--text-secondary)' }}>
+              The model is evaluated using chronologically ordered splits (not random CV) to strictly prevent looking into the future. "Tested accuracy" measures the percentage of correct directional predictions over the last 6-8 periods (folds). If the model is underperforming the baseline, check the Walk-Forward Trend widget to see recent deterioration.
             </div>
           </div>
           <div>
-            <strong>Baselines comparison:</strong> Performance measured vs. simpler coin-flip persistence rules.
+            <strong>2. Data Leakage Prevention (24-Hour Embargo):</strong>
+            <div style={{ fontSize: '0.65rem', marginTop: '0.2rem', color: 'var(--text-secondary)' }}>
+              A mandatory 24-hour buffer interval is enforced between train and test cuts. This nullifies overlap and autocorrelation, ensuring the model cannot "memorize" overlapping rolling features.
+            </div>
+          </div>
+          <div>
+            <strong>3. Reading Confidence Labels:</strong>
+            <div style={{ fontSize: '0.65rem', marginTop: '0.2rem', color: 'var(--text-secondary)' }}>
+              • <strong>HIGH:</strong> Both directional probability (&gt;60%) and recent walk-forward accuracy support the signal. Standard position sizing.<br/>
+              • <strong>MEDIUM:</strong> Mixed signals or moderate probability. Reduce position size by half.<br/>
+              • <strong>LOW / NO_TRADE:</strong> Model predicts sideways movement or conflicting extremes. Stay out of the market.
+            </div>
+          </div>
+          <div>
+            <strong>4. Advanced Indicator Definitions:</strong>
+            <div style={{ fontSize: '0.65rem', marginTop: '0.4rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', color: 'var(--text-secondary)' }}>
+              <div><strong style={{ color: 'var(--text-primary)' }}>RSI (Relative Strength Index):</strong> Measures momentum to identify overbought (&gt;70) or oversold (&lt;30) conditions.</div>
+              <div><strong style={{ color: 'var(--text-primary)' }}>Funding Rate:</strong> Periodic payments between longs/shorts; highly positive means longs are paying shorts (overleveraged bullishness).</div>
+              <div><strong style={{ color: 'var(--text-primary)' }}>L/S Ratio (Long/Short):</strong> The ratio of accounts net-long vs net-short; contrarian indicator when extreme.</div>
+              <div><strong style={{ color: 'var(--text-primary)' }}>Liq Proximity:</strong> Distance to major liquidation clusters (price magnets) where forced selling/buying occurs.</div>
+              <div><strong style={{ color: 'var(--text-primary)' }}>IV/Skew:</strong> Implied Volatility and Put/Call Skew from options markets indicating expected future turbulence.</div>
+              <div><strong style={{ color: 'var(--text-primary)' }}>Exch Net Flow:</strong> On-chain metric tracking net Bitcoin moving into/out of centralized exchanges.</div>
+              <div><strong style={{ color: 'var(--text-primary)' }}>ETF Net Flow:</strong> Institutional capital moving in or out of spot Bitcoin ETFs.</div>
+            </div>
           </div>
         </div>
       </div>
@@ -57,6 +69,7 @@ export function ErrorBanner({ error }) {
 export function AppHeader({
   livePrice, isSimpleMode, setIsSimpleMode,
   showExplainers, setShowExplainers,
+  sidebarHidden, setSidebarHidden,
   loading, fetchPrediction, playClick,
 }) {
   const fmtPrice = n => n?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -77,21 +90,44 @@ export function AppHeader({
         </p>
       </div>
       <div className="header-buttons">
-        <button
-          onClick={() => { playClick(); setIsSimpleMode(v => !v); }}
-          className="btn btn-secondary"
-        >
-          {isSimpleMode ? 'Simple Mode' : 'Advanced Mode'}
-          {isSimpleMode
-            ? <ToggleLeft className="w-4 h-4" style={{ color: '#64748b' }} />
-            : <ToggleRight className="w-4 h-4 text-blue-500" />}
-        </button>
+        <div style={{ display: 'flex', backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '2px', alignItems: 'center' }}>
+          <button
+            onClick={() => { if (!isSimpleMode) { playClick(); setIsSimpleMode(true); } }}
+            style={{
+              padding: '0.35rem 0.7rem', fontSize: '0.65rem', fontWeight: 600, border: 'none', borderRadius: '3px', cursor: 'pointer', transition: 'all 0.2s',
+              backgroundColor: isSimpleMode ? 'var(--accent-brand)' : 'transparent',
+              color: isSimpleMode ? '#fff' : 'var(--text-secondary)',
+              boxShadow: isSimpleMode ? '0 0 10px var(--accent-glow)' : 'none'
+            }}
+          >
+            Simple
+          </button>
+          <button
+            onClick={() => { if (isSimpleMode) { playClick(); setIsSimpleMode(false); } }}
+            style={{
+              padding: '0.35rem 0.7rem', fontSize: '0.65rem', fontWeight: 600, border: 'none', borderRadius: '3px', cursor: 'pointer', transition: 'all 0.2s',
+              backgroundColor: !isSimpleMode ? 'var(--accent-brand)' : 'transparent',
+              color: !isSimpleMode ? '#fff' : 'var(--text-secondary)',
+              boxShadow: !isSimpleMode ? '0 0 10px var(--accent-glow)' : 'none'
+            }}
+          >
+            Advanced
+          </button>
+        </div>
         <button
           onClick={() => { playClick(); setShowExplainers(v => !v); }}
           className="btn btn-secondary"
         >
           <BookOpen className="w-3.5 h-3.5 text-blue-500" />
           {showExplainers ? 'Hide Guide' : 'Methodology Guide'}
+        </button>
+        <button
+          onClick={() => { playClick(); setSidebarHidden(v => !v); }}
+          className="btn btn-secondary"
+          title="Toggle Sidebar completely"
+        >
+          <PanelLeftClose className="w-3.5 h-3.5" />
+          {sidebarHidden ? 'Show Sidebar' : 'Hide Sidebar'}
         </button>
         <button
           onClick={() => { playClick(); fetchPrediction(true); }}

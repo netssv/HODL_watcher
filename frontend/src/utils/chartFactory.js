@@ -12,7 +12,13 @@ import {
 } from 'lightweight-charts';
 import { calcEMA, calcBB, calcRSI } from './chartMath';
 
-const EMA_COLORS   = { 9: '#facc15', 21: '#60a5fa', 50: '#f472b6' };
+export const EMA_COLORS = { 
+  9: '#facc15',   // yellow
+  21: '#fb923c',  // orange
+  50: '#f472b6',  // pink
+  100: '#22d3ee', // cyan
+  200: '#c084fc'  // purple
+};
 const STYLE_DASHED = 2;
 const STYLE_DOTTED = 3;
 

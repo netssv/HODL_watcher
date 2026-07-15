@@ -90,29 +90,7 @@ body::before {
 /* --------------------------------------------------------------------- 
    3. SIMPLE MODE OVERRIDES
    --------------------------------------------------------------------- */
-.simple-mode {
-  --bg-primary:   #f4f6f9;
-  --bg-secondary: #edf0f5;
-  --bg-card:      #ffffff;
-  --bg-card-hover: #fafbfc;
-  --bg-input:     #f8fafc;
-  --border-color:       #dde2ea;
-  --border-color-hover: #b8c0cc;
-  --text-primary:   #0f172a;
-  --text-secondary: #475569;
-  --text-muted:     #94a3b8;
-  --accent-brand: #2563eb;
-  --up-bg:   rgba(16, 185, 129, 0.08);
-  --up-color: #059669;
-  --down-bg:   rgba(244, 63, 94, 0.08);
-  --down-color: #dc2626;
-  --neutral-bg: #f1f5f9;
-  --neutral-color: #64748b;
-  color: var(--text-primary);
-  background-color: var(--bg-primary);
-}
 .simple-mode body::before { display: none; }
-.simple-mode body { background: var(--bg-primary); }
 .simple-mode .card { box-shadow: 0 1px 8px rgba(15, 23, 42, 0.06), 0 0 0 1px rgba(0,0,0,0.04); }
 
 /* --------------------------------------------------------------------- 

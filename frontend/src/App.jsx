@@ -4,13 +4,13 @@ import useSound from 'use-sound';
 import { deriveStrategy } from './utils.jsx';
 import { AppHeader, GuideBanner, ErrorBanner } from './components/Header.jsx';
 import SetupCard, { ApiPipelineCard, MarketSnapshotCard, SignalLogCard } from './components/Sidebar.jsx';
-import { ProjectionsPanel, StrategyCard, RiskManagementCard, ValidationChart, LLMPayloadCard } from './components/ContentPanels.jsx';
+import { ProjectionsPanel, StrategyCard, RiskManagementCard, ValidationChart, LLMPayloadCard, NewsSentimentCard } from './components/ContentPanels.jsx';
 import CandlestickChart from './components/CandlestickChart.jsx';
 import TrainModal from './components/TrainModal.jsx';
 import WidgetGrid from './components/WidgetGrid.jsx';
-import { AddWidgetMenu } from './components/AddWidgetMenu.jsx';
 import { useSidebarCollapse } from './hooks/useSidebarCollapse.js';
 import { useWidgetLayout } from './hooks/useWidgetLayout.js';
+import { LayoutDashboard } from 'lucide-react';
 
 const API = 'http://localhost:8000';
 const THROTTLE_MS = 5000;
@@ -29,6 +29,7 @@ export default function App() {
   // UI
   const [isSimpleMode, setIsSimpleMode]       = useState(true);
   const [showExplainers, setShowExplainers]   = useState(false);
+  const [sidebarHidden, setSidebarHidden]     = useState(false);
   const [showEmbargoTooltip, setShowEmbargoTooltip] = useState(false);
 
   // Data
@@ -46,7 +47,10 @@ export default function App() {
   const [signalLog, setSignalLog]             = useState([]);
   const [sidebarCollapsed, toggleSidebar]     = useSidebarCollapse();
   
-  const { layout, hiddenWidgets, onLayoutChange, hideWidget, addWidget, resetLayout } = useWidgetLayout();
+  const { 
+    hiddenWidgets, minimizedWidgets, maximizedWidget, 
+    hideWidget, restoreWidget, minimizeWidget, toggleMaximize, resetLayout 
+  } = useWidgetLayout();
 
   // Live price via Binance WebSocket — zero API quota cost
   useEffect(() => {
@@ -110,7 +114,7 @@ export default function App() {
   };
 
   return (
-    <div className={isSimpleMode ? 'simple-mode' : ''}>
+    <div>
       <TrainModal
         visible={showTrainModal}
         trainLoading={trainLoading}
@@ -121,15 +125,14 @@ export default function App() {
         <AppHeader
           livePrice={livePrice} isSimpleMode={isSimpleMode} setIsSimpleMode={setIsSimpleMode}
           showExplainers={showExplainers} setShowExplainers={setShowExplainers}
+          sidebarHidden={sidebarHidden} setSidebarHidden={setSidebarHidden}
           loading={loading} fetchPrediction={fetchPrediction} playClick={playClick}
         />
         
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-0.75rem', marginBottom: '0.5rem', zIndex: 10 }}>
-          <AddWidgetMenu 
-            hiddenWidgets={hiddenWidgets} 
-            addWidget={addWidget} 
-            resetLayout={resetLayout} 
-          />
+          <button onClick={resetLayout} className="btn btn-secondary" title="Reset layout to default">
+            <LayoutDashboard size={14} /> Reset Layout
+          </button>
         </div>
 
         <ErrorBanner error={error} />
@@ -140,41 +143,36 @@ export default function App() {
             setShowEmbargoTooltip={setShowEmbargoTooltip}
           />
         )}
-        <main className={`main-layout ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-          <div className="sidebar">
+        <main className={`main-layout ${sidebarCollapsed && !sidebarHidden ? 'sidebar-collapsed' : ''}`} style={sidebarHidden ? { gridTemplateColumns: '0px 1fr' } : {}}>
+          <div className="sidebar" style={{ display: sidebarHidden ? 'none' : 'flex' }}>
             <SetupCard
               isSimpleMode={isSimpleMode} horizonHours={horizonHours} setHorizonHours={setHorizonHours}
               thresholdPct={thresholdPct} setThresholdPct={setThresholdPct}
               featureConfig={featureConfig} setFeatureConfig={setFeatureConfig}
               trainLoading={trainLoading} handleTrain={handleTrain} playClick={playClick}
               collapsed={sidebarCollapsed} toggleCollapse={toggleSidebar}
+              hiddenWidgets={hiddenWidgets} minimizedWidgets={minimizedWidgets} restoreWidget={restoreWidget}
             />
             <div style={{ display: sidebarCollapsed ? 'none' : 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
               {!isSimpleMode && <ApiPipelineCard gaps={gaps} error={error} />}
               {!isSimpleMode && <SignalLogCard log={signalLog} />}
             </div>
             <MarketSnapshotCard
-              predictionData={predictionData} livePrice={livePrice}
+              predictionData={predictionData} prevPredictionData={prevPredictionRef.current} livePrice={livePrice}
               lastFetchedTime={lastFetchedTime} isSimpleMode={isSimpleMode}
               collapsed={sidebarCollapsed}
             />
           </div>
           <div className="content-area" style={{ overflow: 'hidden' }}>
             <WidgetGrid
-              layout={layout}
               hiddenWidgets={hiddenWidgets}
-              onLayoutChange={onLayoutChange}
+              minimizedWidgets={minimizedWidgets}
+              maximizedWidget={maximizedWidget}
               hideWidget={hideWidget}
+              minimizeWidget={minimizeWidget}
+              toggleMaximize={toggleMaximize}
+              restoreWidget={restoreWidget}
             >
-              <div key="projections" id="projections" title="Directional Projections">
-                <ProjectionsPanel
-                  predictionData={predictionData} 
-                  prevPredictionData={prevPredictionRef.current}
-                  isSimpleMode={isSimpleMode} 
-                  thresholdPct={thresholdPct} 
-                />
-              </div>
-              
               <div key="chart" id="chart" title="Chart">
                 {predictionData && (
                   <CandlestickChart 
@@ -184,6 +182,21 @@ export default function App() {
                     globalLivePrice={livePrice} 
                   />
                 )}
+              </div>
+              
+              {!isSimpleMode && predictionData?.news && predictionData.news.length > 0 && (
+                <div key="news" id="news" title="News & Sentiment">
+                  <NewsSentimentCard news={predictionData.news} />
+                </div>
+              )}
+              
+              <div key="projections" id="projections" title="Directional Projections">
+                <ProjectionsPanel
+                  predictionData={predictionData} 
+                  prevPredictionData={prevPredictionRef.current}
+                  isSimpleMode={isSimpleMode} 
+                  thresholdPct={thresholdPct} 
+                />
               </div>
               
               <div key="strategy" id="strategy" title="Strategy">
