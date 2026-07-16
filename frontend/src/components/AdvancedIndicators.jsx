@@ -4,13 +4,14 @@ import { DerivativesGroup, OnChainGroup, SentimentGroup, MacroGroup } from './Sn
 import { MicrostructureGroup } from './MicrostructureGroup.jsx';
 
 const POLL_MS = 120_000; // 2-minute refresh for microstructure data
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 export function AdvancedIndicators({ snapshot }) {
   const [micro, setMicro] = useState({ data: null, loading: true, error: null });
   const timerRef = useRef(null);
 
   const fetchMicro = () => {
-    fetch('/api/indicators?limit=50')
+    fetch(`${API_BASE}/api/indicators?limit=50`)
       .then(r => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();

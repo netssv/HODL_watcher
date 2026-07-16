@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.git/
+frontend/
+tests/
+.agents/
+scratch/
+.dev_logs/
+*.sqlite
+.env
+.env.*
+hodl_watcher.egg-info/
+node_modules/

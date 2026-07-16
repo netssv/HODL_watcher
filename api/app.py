@@ -8,6 +8,7 @@ Ensures:
 4. Clean separation: route handlers do not run pandas operations directly.
 """
 
+import os
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,13 +24,22 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Enable CORS for local React development
+# CORS — explicit origins for production, env var override for flexibility
+_extra_origin = os.environ.get("ALLOWED_ORIGIN", "")
+_origins = [
+    "http://localhost:5173",           # local Vite dev server
+    "https://hodl-watcher.vercel.app", # production Vercel URL (update if renamed)
+]
+if _extra_origin:
+    _origins.append(_extra_origin)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 app.include_router(router)
+
