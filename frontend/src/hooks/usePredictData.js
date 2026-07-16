@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { deriveStrategy } from '../utils.jsx';
 
-const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API = import.meta.env.VITE_API_BASE_URL || '';
 const THROTTLE_MS = 5000;
 
 export function usePredictData(playChime) {

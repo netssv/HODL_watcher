@@ -101,6 +101,18 @@ check_node() {
   fi
 }
 
+ensure_backend_ready() {
+  local retries=20
+  for ((i=1; i<=retries; i++)); do
+    if curl -fsS http://127.0.0.1:8000/docs >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+  err "Backend did not become ready on http://127.0.0.1:8000"
+  return 1
+}
+
 # ── Modes ─────────────────────────────────────────────────────────────────────
 start_backend() {
   check_venv
@@ -118,7 +130,7 @@ start_frontend() {
   check_node
   kill_port 5173
   log "Starting Vite frontend..."
-  (cd "$ROOT/frontend" && npm run dev -- --host 127.0.0.1 2>&1 \
+  (cd "$ROOT/frontend" && VITE_API_PROXY_TARGET=http://127.0.0.1:8000 npm run dev -- --host 127.0.0.1 2>&1 \
     | sed "s/^/$(printf "${MAGENTA}[frontend]${RESET} ")/") &
   FRONTEND_PID=$!
   wait_for_port 5173 "Frontend"
@@ -175,6 +187,7 @@ case "$CMD" in
   both|"")
     banner
     start_backend
+    ensure_backend_ready
     start_frontend
     echo ""
     ok  "HODL Watcher is running!"
