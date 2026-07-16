@@ -2,8 +2,8 @@
 NewsAPI client — general news search for Bitcoin/macro keywords.
 
 Uses official newsapi-python client library.
-Free tier: 100 requests/day (hard limit, tracked by QuotaTracker).
-Cache TTL: 60 minutes.
+Free tier: 1,000 requests/month (~33/day). Budget capped at 30/day here.
+Cache TTL: 6 hours to stay well within the monthly allowance.
 """
 
 import logging
@@ -17,8 +17,8 @@ from .config import NEWSAPI_KEY
 
 logger = logging.getLogger(__name__)
 
-# Hard daily limit for the free tier
-_quota = QuotaTracker(name="newsapi", limit=100, window_seconds=86_400)
+# Budget: 30 calls/day keeps us under 1,000/month (real free-tier limit)
+_quota = QuotaTracker(name="newsapi", limit=30, window_seconds=86_400)
 
 
 def search_news(
@@ -67,7 +67,7 @@ def search_news(
         newsapi = NewsApiClient(api_key=NEWSAPI_KEY)
         raw = cached_fetch(
             key=cache_key,
-            ttl_seconds=3600,  # 60 min cache
+            ttl_seconds=21_600,  # 6-hour cache — 1,000 req/month budget
             fetch_fn=lambda: newsapi.get_everything(
                 q=query,
                 language=language,
