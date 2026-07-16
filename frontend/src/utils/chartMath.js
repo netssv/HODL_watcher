@@ -46,3 +46,16 @@ export function calcRSI(data, period = 14) {
   }
   return result;
 }
+
+/** Volume Weighted Average Price */
+export function calcVWAP(data) {
+  let sumPV = 0;
+  let sumVol = 0;
+  return data.map(d => {
+    const typ = (d.high + d.low + d.close) / 3;
+    const vol = d.volume ?? 0;
+    sumPV += typ * vol;
+    sumVol += vol;
+    return { time: d.time, value: +(sumVol > 0 ? sumPV / sumVol : d.close).toFixed(2) };
+  });
+}

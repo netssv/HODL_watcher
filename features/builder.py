@@ -10,81 +10,16 @@ Rules:
 import pandas as pd
 import numpy as np
 from typing import Dict, Any
-
-def compute_market_regime(df: pd.DataFrame, window: int = 14) -> pd.Series:
-    """
-    Classify market regime using ATR and price bounds.
-    Returns: 1 (trending up), -1 (trending down), 0 (ranging/volatile)
-    """
-    atr = compute_atr(df, window)
-    ma_short = df['close'].rolling(window=window, center=False).mean()
-    ma_long = df['close'].rolling(window=window*3, center=False).mean()
-    
-    # Simple logic: distance between short/long MA normalized by ATR
-    trend_strength = (ma_short - ma_long) / (atr + 1e-9)
-    
-    regime = pd.Series(0, index=df.index)
-    regime[trend_strength > 1.0] = 1   # Trending Up
-    regime[trend_strength < -1.0] = -1 # Trending Down
-    return regime
-
-def compute_rsi(df: pd.DataFrame, window: int) -> pd.Series:
-    """
-    Compute relative strength index (RSI).
-    
-    Lookback window: window + 1 periods.
-    """
-    delta = df['close'].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=window, center=False).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=window, center=False).mean()
-    rs = gain / (loss + 1e-9)
-    return 100 - (100 / (1 + rs))
-
-
-def compute_macd(df: pd.DataFrame, fast_window: int = 12, slow_window: int = 26, signal_window: int = 9) -> Dict[str, pd.Series]:
-    """
-    Compute MACD line and signal line.
-    
-    Lookback window: slow_window + signal_window periods.
-    """
-    fast_ema = df['close'].ewm(span=fast_window, adjust=False).mean()
-    slow_ema = df['close'].ewm(span=slow_window, adjust=False).mean()
-    macd_line = fast_ema - slow_ema
-    signal_line = macd_line.ewm(span=signal_window, adjust=False).mean()
-    return {
-        "macd": macd_line,
-        "macd_signal": signal_line
-    }
-
-
-def compute_bollinger_bands(df: pd.DataFrame, window: int = 20, num_std: float = 2.0) -> Dict[str, pd.Series]:
-    """
-    Compute Bollinger Bands (middle, upper, lower).
-    
-    Lookback window: window periods.
-    """
-    rolling_mean = df['close'].rolling(window=window, center=False).mean()
-    rolling_std = df['close'].rolling(window=window, center=False).std()
-    return {
-        "bb_middle": rolling_mean,
-        "bb_upper": rolling_mean + (num_std * rolling_std),
-        "bb_lower": rolling_mean - (num_std * rolling_std)
-    }
-
-
-def compute_atr(df: pd.DataFrame, window: int = 14) -> pd.Series:
-    """
-    Compute Average True Range (ATR).
-    
-    Lookback window: window + 1 periods.
-    """
-    high_low = df['high'] - df['low']
-    high_close = (df['high'] - df['close'].shift(1)).abs()
-    low_close = (df['low'] - df['close'].shift(1)).abs()
-    ranges = pd.concat([high_low, high_close, low_close], axis=1)
-    true_range = ranges.max(axis=1)
-    return true_range.rolling(window=window, center=False).mean()
-
+from features.indicators import (
+    compute_market_regime,
+    compute_rsi,
+    compute_macd,
+    compute_bollinger_bands,
+    compute_atr,
+    compute_vwap,
+    compute_realized_volatility,
+    compute_iv_rank
+)
 
 def build_features(
     spot_df: pd.DataFrame,
@@ -94,10 +29,11 @@ def build_features(
     fear_greed_df: pd.DataFrame = None,
     macro_dfs: Dict[str, pd.DataFrame] = None,
     order_book_df: pd.DataFrame = None,
-    coinglass_df: pd.DataFrame = None,
+    coinalyze_df: pd.DataFrame = None,
     deribit_df: pd.DataFrame = None,
     onchain_df: pd.DataFrame = None,
     etf_df: pd.DataFrame = None,
+    hyperliquid_df: pd.DataFrame = None,
 ) -> pd.DataFrame:
     """
     Build complete feature matrix aligning timestamps chronologically.
@@ -140,6 +76,14 @@ def build_features(
     df['relative_volume'] = df['volume'] / (df['vol_ma_20'] + 1e-9)
     df['taker_buy_sell_ratio'] = df['taker_buy_base'] / (df['volume'] - df['taker_buy_base'] + 1e-9)
 
+    # Phase 1 — local calculations (no future leak; all rolling backward)
+    df['vwap_24'] = compute_vwap(df, window=24)
+    df['realized_vol_24'] = compute_realized_volatility(df, window=24)
+    # Volume Delta = taker buy volume − taker sell volume (per candle)
+    df['volume_delta'] = df['taker_buy_base'] - (df['volume'] - df['taker_buy_base'])
+    # Cumulative Volume Delta: rolling 24-candle net taker flow
+    df['cvd_24'] = df['volume_delta'].rolling(window=24, center=False).sum()
+
     # Convert index to a column to allow merge_asof
     df = df.reset_index()
     df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True).dt.as_unit('ns')
@@ -166,6 +110,18 @@ def build_features(
             direction='backward'
         )
         df['long_short_ratio_diff_7'] = df['long_short_ratio'].diff(7)
+
+    # Futures Basis: (perp price − spot price) / spot price
+    if futures_df is not None and not futures_df.empty:
+        fut_sorted = futures_df[['close']].rename(columns={'close': 'futures_close'}).reset_index().sort_values('timestamp')
+        fut_sorted['timestamp'] = pd.to_datetime(fut_sorted['timestamp'], utc=True).dt.as_unit('ns')
+        df = pd.merge_asof(
+            df.sort_values('timestamp'),
+            fut_sorted,
+            on='timestamp',
+            direction='backward'
+        )
+        df['futures_basis'] = (df['futures_close'] - df['close']) / (df['close'] + 1e-9)
 
     # 4. Join Fear & Greed Index
     if fear_greed_df is not None and not fear_greed_df.empty:
@@ -215,8 +171,8 @@ def build_features(
         top_50_ask_vol = asks.nsmallest(50, 'price')['quantity'].sum() if not asks.empty else 0
         df['ob_imbalance_50'] = (top_50_bid_vol - top_50_ask_vol) / (top_50_bid_vol + top_50_ask_vol + 1e-9)
 
-    # 7. Join Coinglass, Deribit, Onchain, ETF
-    for name, extra_df in [('coinglass', coinglass_df), ('deribit', deribit_df), ('onchain', onchain_df), ('etf', etf_df)]:
+    # 7. Join Coinalyze, Deribit, Onchain, ETF, Hyperliquid
+    for name, extra_df in [('coinalyze', coinalyze_df), ('deribit', deribit_df), ('onchain', onchain_df), ('etf', etf_df), ('hyperliquid', hyperliquid_df)]:
         if extra_df is not None and not extra_df.empty:
             extra_sorted = extra_df.reset_index().sort_values('timestamp')
             extra_sorted['timestamp'] = pd.to_datetime(extra_sorted['timestamp'], utc=True).dt.as_unit('ns')
@@ -226,6 +182,10 @@ def build_features(
                 on='timestamp',
                 direction='backward'
             )
+
+    # IV Rank: computed over the merged dvol column if Deribit data was joined
+    if 'dvol' in df.columns:
+        df['iv_rank'] = compute_iv_rank(df['dvol'], window=720)
 
     df.set_index('timestamp', inplace=True)
     return df

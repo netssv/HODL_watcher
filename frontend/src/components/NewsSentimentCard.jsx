@@ -23,11 +23,11 @@ export function NewsSentimentCard({ news }) {
                 {item.title}
               </a>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>
+                <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>
                   {item.source} • {new Date(item.published_at).toLocaleString()}
                 </span>
                 {item.sentiment && item.sentiment !== 'null' && (
-                  <span style={{ fontSize: '0.55rem', fontWeight: 600, padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase', backgroundColor: s.bg, color: s.color }}>
+                  <span style={{ fontSize: '0.84rem', fontWeight: 600, padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase', backgroundColor: s.bg, color: s.color }}>
                     {item.sentiment}
                   </span>
                 )}

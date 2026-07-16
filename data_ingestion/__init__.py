@@ -14,12 +14,13 @@ from . import fear_greed
 from . import fred_macro
 from . import coingecko
 from . import mempool_onchain
-from . import news_cryptopanic
 from . import news_newsapi
-from . import coinglass
+from . import coinalyze
 from . import deribit
 from . import onchain_metrics
 from . import etf_flows
+from . import news_currents
+from . import hyperliquid
 
 __all__ = [
     "binance_spot",
@@ -28,10 +29,11 @@ __all__ = [
     "fred_macro",
     "coingecko",
     "mempool_onchain",
-    "news_cryptopanic",
     "news_newsapi",
-    "coinglass",
+    "coinalyze",
     "deribit",
     "onchain_metrics",
     "etf_flows",
+    "news_currents",
+    "hyperliquid",
 ]

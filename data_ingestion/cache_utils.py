@@ -20,7 +20,7 @@ DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 
 def _get_conn() -> sqlite3.Connection:
-    conn = sqlite3.connect(str(DB_PATH))
+    conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS cache (

@@ -42,7 +42,7 @@ def test_get_raw_data_endpoint(mock_get_klines):
     assert json_data["data"][0]["close"] == 50100.0
 
 
-@patch("api.app._fetch_all_sources")
+@patch("api.routes.fetch_all_sources")
 def test_calculate_features_endpoint(mock_fetch):
     # Mock return values for fetch all sources
     mock_fetch.return_value = (
@@ -54,7 +54,7 @@ def test_calculate_features_endpoint(mock_fetch):
             "fear_greed_df": None,
             "macro_dfs": {},
             "order_book_df": None,
-            "coinglass_df": None,
+            "coinalyze_df": None,
             "deribit_df": None,
             "onchain_df": None,
             "etf_df": None
@@ -79,7 +79,7 @@ def test_calculate_features_endpoint(mock_fetch):
     assert json_data["data_gaps"] == ["some_warning"]
 
 
-@patch("api.app._fetch_all_sources")
+@patch("api.routes.fetch_all_sources")
 def test_train_model_insufficient_samples(mock_fetch):
     mock_fetch.return_value = (
         {
@@ -90,7 +90,7 @@ def test_train_model_insufficient_samples(mock_fetch):
             "fear_greed_df": None,
             "macro_dfs": {},
             "order_book_df": None,
-            "coinglass_df": None,
+            "coinalyze_df": None,
             "deribit_df": None,
             "onchain_df": None,
             "etf_df": None

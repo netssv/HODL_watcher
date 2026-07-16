@@ -8,7 +8,33 @@ export const fmtPct = (n, d = 1) => `${(n * 100).toFixed(d)}%`;
 /** Derive status for an API connector from current gaps/error state */
 export const getConnectorStatus = (name, gaps, error) => {
   if (error) return { label: 'Offline', color: 'status-offline' };
-  if (gaps.some(g => g.toLowerCase().includes(name.toLowerCase())))
+  const nameLower = name.toLowerCase();
+
+  // Explicit Online signals from fallback sources
+  if (nameLower === 'currents_news') {
+    if (gaps.some(g => g.includes('news: currents_api')))
+      return { label: 'Online', color: 'status-online' };
+    if (gaps.some(g => g.includes('news: newsapi_fallback')))
+      return { label: 'Online', color: 'status-online' };
+  }
+  if (nameLower === 'etf_flows') {
+    if (gaps.some(g => g.includes('etf_flows: coingecko_proxy')))
+      return { label: 'Proxy (CoinGecko)', color: 'status-warning' };
+  }
+
+  const hasMissingKey = gaps.some(g => {
+    const gl = g.toLowerCase();
+    return gl.includes(nameLower) && gl.includes('missing_key');
+  });
+  if (hasMissingKey) return { label: 'NO KEY', color: 'status-warning' };
+
+  const hasMock = gaps.some(g => {
+    const gl = g.toLowerCase();
+    return gl.includes(nameLower) && gl.includes('mock_data');
+  });
+  if (hasMock) return { label: 'MOCK', color: 'status-warning' };
+
+  if (gaps.some(g => g.toLowerCase().includes(nameLower)))
     return { label: 'Degraded', color: 'status-unknown' };
   return { label: 'Online', color: 'status-online' };
 };

@@ -16,7 +16,7 @@ export function StrategyCard({ strategy }) {
       <div className="card-header">
         <h2><Cpu className="w-4 h-4 text-emerald-400" />Strategy</h2>
         {isLowConfidence && (
-          <span style={{ fontSize: '0.55rem', backgroundColor: 'rgba(148,163,184,0.15)', color: '#94a3b8', padding: '2px 6px', borderRadius: '999px', fontWeight: 600 }}>
+          <span style={{ fontSize: '0.84rem', backgroundColor: 'rgba(148,163,184,0.15)', color: '#94a3b8', padding: '2px 6px', borderRadius: '999px', fontWeight: 600 }}>
             LOW CONFIDENCE — NO ACTION
           </span>
         )}

@@ -46,7 +46,7 @@ export function AddWidgetMenu({ hiddenWidgets, addWidget, resetLayout }) {
             borderRadius: '4px', padding: '0.5rem', minWidth: '200px',
             boxShadow: '0 4px 12px rgba(0,0,0,0.2)', zIndex: 100
           }}>
-            <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', fontWeight: 600, padding: '0 0.25rem' }}>
+            <div style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', fontWeight: 600, padding: '0 0.25rem' }}>
               Restore Widgets
             </div>
             {hiddenWidgets.map(id => (
@@ -56,7 +56,7 @@ export function AddWidgetMenu({ hiddenWidgets, addWidget, resetLayout }) {
                 style={{
                   display: 'block', width: '100%', textAlign: 'left',
                   background: 'none', border: 'none', padding: '0.4rem 0.5rem',
-                  fontSize: '0.7rem', color: 'var(--text-secondary)', cursor: 'pointer',
+                  fontSize: '0.88rem', color: 'var(--text-secondary)', cursor: 'pointer',
                   borderRadius: '3px'
                 }}
                 onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'}

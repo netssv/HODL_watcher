@@ -3,11 +3,24 @@ import { createPortal } from 'react-dom';
 import { X, Minus, Square } from 'lucide-react';
 
 export function WidgetCard({ children, title, id, onHide, onMinimize, onMaximize, isMaximized }) {
+  // Inject flex & height styles to ensure child wrapper divs stretch to fill the card
+  const styledChildren = React.isValidElement(children)
+    ? React.cloneElement(children, {
+        style: {
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          flex: 1,
+          ...(children.props.style || {}),
+        }
+      })
+    : children;
+
   return (
-    <div className="widget-card-container" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div className="widget-card-container" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div className="widget-drag-handle" style={{ cursor: 'default' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{title}</span>
+          <span style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{title}</span>
         </div>
         <div style={{ display: 'flex', gap: '0.2rem' }}>
           <button onClick={() => onMinimize(id)} className="widget-close-btn" title="Minimize">
@@ -21,8 +34,8 @@ export function WidgetCard({ children, title, id, onHide, onMinimize, onMaximize
           </button>
         </div>
       </div>
-      <div className="widget-content-scrollable" style={{ flexGrow: 1, overflow: 'auto' }}>
-        {children}
+      <div className="widget-content-scrollable" style={{ flexGrow: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+        {styledChildren}
       </div>
     </div>
   );
@@ -58,8 +71,8 @@ export default function WidgetGrid({
       <div style={{ 
         display: 'grid', 
         gridTemplateColumns: 'repeat(12, 1fr)', 
-        gap: '16px',
-        margin: '16px'
+        gap: '1rem',
+        margin: '0'
       }}>
         {activeChildren.map(child => {
           let span = 12;
@@ -68,8 +81,8 @@ export default function WidgetGrid({
           if (child.props.id === 'strategy' || child.props.id === 'risk') {
             span = 6;
           } else if (child.props.id === 'chart') {
-            minHeight = '500px';
-          } else if (child.props.id === 'projections' || child.props.id === 'validation') {
+            minHeight = '650px';
+          } else if (child.props.id === 'projections' || child.props.id === 'validation' || child.props.id === 'indicators') {
             minHeight = '400px';
           }
 
@@ -99,9 +112,12 @@ export default function WidgetGrid({
 
       {maximizedChild && createPortal(
         <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          zIndex: 9999, backgroundColor: 'var(--bg-card)',
-          display: 'flex', flexDirection: 'column'
+          position: 'fixed', top: 0, left: 0,
+          width: '100dvw', height: '100dvh',
+          zIndex: 9999,
+          backgroundColor: '#0a0c10',
+          display: 'flex', flexDirection: 'column',
+          overflow: 'hidden',
         }}>
           <WidgetCard 
             title={maximizedChild.props.title} 

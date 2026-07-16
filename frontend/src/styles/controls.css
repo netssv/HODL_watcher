@@ -7,7 +7,7 @@
 .slider-header {
   display: flex;
   justify-content: space-between;
-  font-size: 0.65rem;
+  font-size: 0.87rem;
   color: var(--text-secondary);
   margin-bottom: 0.35rem;
   font-family: var(--text-mono);
@@ -48,7 +48,7 @@
   gap: 0.35rem;
 }
 .badge-btn {
-  font-size: 0.6rem;
+  font-size: 0.82rem;
   font-weight: 600;
   padding: 0.2rem 0.55rem;
   border-radius: 2px;
@@ -76,8 +76,8 @@
    --------------------------------------------------------------------- */
 .status-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
+  grid-template-columns: 1fr;
+  gap: 0.4rem;
 }
 .status-item {
   display: flex;
@@ -87,13 +87,13 @@
   background: rgba(255,255,255,0.02);
   border: 1px solid var(--border-color);
   border-radius: 2px;
-  font-size: 0.6rem;
+  font-size: 0.82rem;
   font-family: var(--text-mono);
 }
 .simple-mode .status-item { background: #f8fafc; border-color: #e2e8f0; }
 .status-name { color: var(--text-secondary); }
 .status-badge {
-  font-size: 0.55rem;
+  font-size: 0.95rem;
   font-weight: 700;
   padding: 0.1rem 0.35rem;
   border-radius: 2px;
@@ -103,41 +103,50 @@
 .status-online  { background: rgba(16,185,129,0.15); color: #10b981; }
 .status-offline { background: rgba(244,63,94,0.15);  color: #f43f5e; }
 .status-unknown { background: rgba(148,163,184,0.1); color: #94a3b8; }
+.status-warning { background: rgba(245,158,11,0.15); color: #f59e0b; }
 
 /* --------------------------------------------------------------------- 
    13. MARKET SNAPSHOT
    --------------------------------------------------------------------- */
 .snapshot-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 .snapshot-box {
   display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  padding: 0.6rem 0.75rem;
-  background: rgba(255,255,255,0.02);
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255,255,255,0.04);
   border: 1px solid var(--border-color);
-  border-radius: 2px;
+  border-radius: 4px;
   transition: border-color 0.2s;
+  gap: 0.5rem;
 }
 .snapshot-box:hover { border-color: var(--border-color-hover); }
 .simple-mode .snapshot-box { background: #f8fafc; border-color: #e2e8f0; }
 .snapshot-label {
-  font-size: 0.55rem;
+  font-size: 0.82rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
   font-family: var(--text-mono);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
+.simple-mode .snapshot-label { color: #64748b; }
 .snapshot-val {
-  font-size: 0.9rem;
-  font-weight: 700;
+  font-size: 0.95rem;
+  font-weight: 800;
   font-family: var(--text-mono);
+  color: var(--text-primary);
+  text-align: right;
   animation: ticker-flash 0.4s ease;
 }
+.simple-mode .snapshot-val { color: #0f172a; }
 
 /* --------------------------------------------------------------------- 
    14. PROJECTION CARDS — Binance-style bold data cells
@@ -169,7 +178,7 @@
   box-shadow: 0 6px 20px rgba(0,0,0,0.3);
 }
 .projection-card-label {
-  font-size: 0.55rem;
+  font-size: 0.95rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -184,7 +193,7 @@
   letter-spacing: -0.02em;
 }
 .projection-card-sub {
-  font-size: 0.55rem;
+  font-size: 0.95rem;
   color: var(--text-secondary);
   font-family: var(--text-mono);
 }

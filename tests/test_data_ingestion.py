@@ -347,13 +347,13 @@ class TestGracefulDegradation:
         assert df.empty
         assert df.attrs.get("source") == "fred"
 
-    def test_cryptopanic_no_key_returns_empty(self):
-        with patch("data_ingestion.news_cryptopanic.CRYPTOPANIC_API_KEY", ""):
-            from data_ingestion.news_cryptopanic import get_news
+    def test_currents_no_key_returns_empty(self):
+        with patch("data_ingestion.news_currents.CURRENTS_API_KEY", ""):
+            from data_ingestion.news_currents import get_news
             df = get_news()
 
         assert df.empty
-        assert df.attrs.get("source") == "cryptopanic"
+        assert df.attrs.get("source") == "currents"
 
     def test_newsapi_no_key_returns_empty(self):
         with patch("data_ingestion.news_newsapi.NEWSAPI_KEY", ""):

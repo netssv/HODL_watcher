@@ -1,0 +1,199 @@
+/* =====================================================================
+   indicators.css — Advanced Indicators section styles
+   Uses existing design tokens from tokens.css.
+   Companion to AdvancedIndicators.jsx
+   ===================================================================== */
+
+/* --------------------------------------------------------------------- 
+   1. SECTION WRAPPER
+   --------------------------------------------------------------------- */
+.adv-indicators {
+  margin-top: 1.25rem;
+  animation: fade-in-up 0.25s ease both;
+}
+
+/* --------------------------------------------------------------------- 
+   2. GROUP SUB-HEADER (DERIVATIVES / ON-CHAIN & FLOWS / etc.)
+   --------------------------------------------------------------------- */
+.indicator-group {
+  margin-bottom: 0.85rem;
+}
+.indicator-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.5rem;
+  padding-left: 0.5rem;
+  border-left: 2px solid var(--accent-brand);
+}
+.indicator-group-label {
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  font-family: var(--text-mono);
+}
+
+/* --------------------------------------------------------------------- 
+   3. CARD GRID  
+   --------------------------------------------------------------------- */
+.indicator-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.45rem;
+}
+@media (min-width: 420px) {
+  .indicator-card-grid--3 { grid-template-columns: repeat(3, 1fr); }
+  .indicator-card-grid--4 { grid-template-columns: repeat(4, 1fr); }
+}
+@media (min-width: 640px) {
+  .indicator-card-grid--2 { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* --------------------------------------------------------------------- 
+   4. INDICATOR CARD ANATOMY
+   label (small caps) → value (mono) → gloss (plain words) → trend
+   --------------------------------------------------------------------- */
+.ind-card {
+  padding: 0.6rem 0.65rem;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  transition: border-color 0.2s;
+  position: relative;
+}
+.ind-card:hover { border-color: var(--border-color-hover); }
+
+/* Label */
+.ind-label {
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-family: var(--text-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Value — protagonist */
+.ind-value {
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-family: var(--text-mono);
+  color: var(--text-primary);
+  line-height: 1.1;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+.ind-value--up   { color: var(--up-color); }
+.ind-value--down { color: var(--down-color); }
+.ind-value--na   { color: var(--text-muted); font-size: 0.9rem; }
+
+/* Trend arrow */
+.ind-trend {
+  font-size: 0.82rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+.ind-trend--up   { color: var(--up-color); }
+.ind-trend--down { color: var(--down-color); }
+.ind-trend--flat { color: var(--text-muted); }
+
+/* Gloss — one line of plain English */
+.ind-gloss {
+  font-size: 0.96rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-top: 0.1rem;
+}
+
+/* --------------------------------------------------------------------- 
+   5. INFO EXPANDER — persistent tap-friendly (no hover dependency)
+   Uses <details>/<summary> so it works on mobile without JS
+   --------------------------------------------------------------------- */
+.ind-info {
+  margin-top: 0.3rem;
+  border-top: 1px solid var(--border-color);
+  padding-top: 0.2rem;
+}
+.ind-info summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  font-family: var(--text-mono);
+  user-select: none;
+  padding: 0.15rem 0;
+}
+.ind-info summary::-webkit-details-marker { display: none; }
+.ind-info summary::before {
+  content: '\2295';
+  font-size: 0.87rem;
+  color: var(--accent-brand);
+  transition: transform 0.15s;
+}
+.ind-info[open] summary::before { content: '\2296'; }
+.ind-info-body {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid var(--border-color);
+  border-radius: 2px;
+  padding: 0.4rem 0.5rem;
+  line-height: 1.55;
+  margin-top: 0.2rem;
+  animation: fade-in-up 0.15s ease;
+}
+.simple-mode .ind-info-body {
+  background: #f1f5f9;
+  color: #334155;
+  border-color: #cbd5e1;
+}
+
+/* --------------------------------------------------------------------- 
+   6. SECTION HEADING (ADVANCED INDICATORS)
+   --------------------------------------------------------------------- */
+.adv-indicators-heading {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  font-family: var(--text-mono);
+}
+/* --------------------------------------------------------------------- 7. MICROSTRUCTURE — loading / error states --------------------------------------------------------------------- */
+.ind-loading,
+.ind-error {
+  grid-column: 1 / -1;
+  font-size: 0.84rem;
+  font-family: var(--text-mono);
+  padding: 0.5rem 0.6rem;
+  border-radius: 4px;
+  letter-spacing: 0.03em;
+}
+.ind-loading {
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.03);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+.ind-error {
+  color: var(--danger, #f87171);
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}

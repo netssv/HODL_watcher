@@ -1,8 +1,8 @@
-/* --------------------------------------------------------------------- 
-   5. LAYOUT
-   --------------------------------------------------------------------- */
+/* ── 5. LAYOUT ── */
 .container {
-  max-width: 1180px;
+  max-width: 1600px;
+  width: 100%;
+  box-sizing: border-box;
   margin: 0 auto;
   padding: 1.5rem 1.25rem;
   display: flex;
@@ -12,292 +12,179 @@
   z-index: 1;
   animation: fade-in-up 0.4s ease both;
 }
-
-.main-layout {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.25rem;
-}
+.main-layout { display: grid; grid-template-columns: 1fr; gap: 1.25rem; }
 @media (min-width: 1024px) {
-  .main-layout {
-    grid-template-columns: 270px 1fr;
-    transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .main-layout.sidebar-collapsed {
-    grid-template-columns: 48px 1fr;
-  }
+  .main-layout { grid-template-columns: 270px 1fr; transition: grid-template-columns 0.3s ease; }
+  .main-layout.sidebar-collapsed { grid-template-columns: 48px 1fr; }
 }
 .sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  display: flex; flex-direction: column; gap: 1.2rem;
+  position: sticky; top: 1.5rem; max-height: calc(100vh - 3rem); overflow-y: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;  /* IE and Edge */
+  align-self: start;
+  padding: 0 0.5rem;
+  box-sizing: border-box;
 }
-.content-area {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  min-width: 0;
+/* Hide scrollbar for Chrome, Safari and Opera */
+.sidebar::-webkit-scrollbar {
+  display: none;
 }
-
+.content-area { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
 .sidebar-icon-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px;
+  color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; transition: all 0.2s ease;
 }
-.sidebar-icon-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
-}
+.sidebar-icon-btn:hover { background: rgba(255, 255, 255, 0.1); color: var(--text-primary); }
 
-/* --------------------------------------------------------------------- 
-   6. HEADER — Terminal-style top bar
-   --------------------------------------------------------------------- */
-.header {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--border-color);
-  gap: 0.75rem;
-  position: relative;
-}
-@media (min-width: 640px) {
-  .header { flex-direction: row; align-items: center; }
-}
+/* ── 6. HEADER ── */
+.header { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); gap: 0.75rem; position: relative; }
+@media (min-width: 640px) { .header { flex-direction: row; align-items: center; } }
 .header-title h1 {
-  font-family: 'Outfit', sans-serif;
-  font-size: 1.45rem;
-  font-weight: 800;
-  margin: 0;
-  letter-spacing: -0.02em;
-  background: linear-gradient(135deg, #f0f4f8 0%, #8b96a7 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-family: 'Outfit', sans-serif; font-size: 1.45rem; font-weight: 800; margin: 0; letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #f0f4f8 0%, #8b96a7 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
 }
-.simple-mode .header-title h1 {
-  background: linear-gradient(135deg, #0f172a 0%, #2563eb 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-.header-title p {
-  color: var(--text-secondary);
-  font-size: 0.7rem;
-  margin: 0.15rem 0 0 0;
-  font-family: var(--text-mono);
-  letter-spacing: 0.02em;
-}
-.header-buttons {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
+.simple-mode .header-title h1 { background: linear-gradient(135deg, #0f172a 0%, #2563eb 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.header-title p { color: var(--text-secondary); font-size: 0.9rem; margin: 0.15rem 0 0 0; font-family: var(--text-mono); letter-spacing: 0.02em; }
+.header-buttons { display: flex; gap: 0.5rem; align-items: center; }
 
-/* --------------------------------------------------------------------- 
-   7. BUTTONS — with hover glow and press animation
-   --------------------------------------------------------------------- */
+/* ── 7. BUTTONS ── */
 .btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 0.9rem;
-  border-radius: 3px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 1px solid transparent;
-  letter-spacing: 0.01em;
-  position: relative;
-  overflow: hidden;
+  display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.9rem; border-radius: 3px;
+  font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.18s ease; border: 1px solid transparent;
+  letter-spacing: 0.01em; position: relative; overflow: hidden;
 }
 .btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--accent-brand); color: #ffffff; border-color: var(--accent-brand); }
+.btn-primary:hover { background: var(--accent-brand-hover); box-shadow: 0 0 16px var(--accent-glow); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-secondary { background: rgba(255,255,255,0.04); color: var(--text-primary); border-color: var(--border-color); }
+.btn-secondary:hover { background: rgba(255,255,255,0.08); border-color: var(--border-color-hover); }
+.simple-mode .btn-secondary { background: #fff; color: #0f172a; border-color: #d1d5db; }
+.simple-mode .btn-secondary:hover { background: #f8fafc; border-color: #94a3b8; }
 
-.btn-primary {
-  background: var(--accent-brand);
-  color: #ffffff;
-  border-color: var(--accent-brand);
-}
-.btn-primary:hover {
-  background: var(--accent-brand-hover);
-  box-shadow: 0 0 16px var(--accent-glow), 0 2px 8px rgba(0,0,0,0.3);
-}
-.btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  background: rgba(255,255,255,0.04);
-  color: var(--text-primary);
-  border-color: var(--border-color);
-}
-.btn-secondary:hover {
-  background: rgba(255,255,255,0.08);
-  border-color: var(--border-color-hover);
-}
-.simple-mode .btn-secondary {
-  background: #fff;
-  color: #0f172a;
-  border-color: #d1d5db;
-}
-.simple-mode .btn-secondary:hover {
-  background: #f8fafc;
-  border-color: #94a3b8;
-}
-
-/* --------------------------------------------------------------------- 
-   8. CARDS — glassmorphic, animated entrance
-   --------------------------------------------------------------------- */
+/* ── 8. CARDS ── */
 .card {
-  background: var(--bg-card);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border-color);
-  border-radius: 3px;
-  padding: 1.25rem;
-  box-shadow:
-    0 0 0 1px rgba(255,255,255,0.03) inset,
-    0 8px 24px rgba(0,0,0,0.25);
-  transition: border-color 0.25s, box-shadow 0.25s;
-  animation: float-up-in 0.35s ease both;
+  background: var(--bg-card); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color); border-radius: 3px; padding: 1.25rem;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.03) inset, 0 8px 24px rgba(0,0,0,0.25);
+  transition: border-color 0.25s, box-shadow 0.25s; animation: float-up-in 0.35s ease both;
 }
-.card:hover {
-  border-color: var(--border-color-hover);
-}
+.card:hover { border-color: var(--border-color-hover); }
+.card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 0.6rem; margin-bottom: 0.85rem; }
+.card-header h2 { font-family: 'Outfit', sans-serif; font-size: 0.9rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); display: flex; align-items: center; gap: 0.4rem; margin: 0; }
 
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 0.6rem;
-  margin-bottom: 0.85rem;
-}
-.card-header h2 {
-  font-family: 'Outfit', sans-serif;
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin: 0;
-}
-
-/* --------------------------------------------------------------------- 
-   9. BANNERS
-   --------------------------------------------------------------------- */
-.banner {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  border-radius: 3px;
-  font-size: 0.7rem;
-  border: 1px solid transparent;
-}
-.banner-error {
-  background: rgba(244, 63, 94, 0.05);
-  border-color: rgba(244, 63, 94, 0.25);
-  color: #fda4af;
-}
+/* ── 9. BANNERS ── */
+.banner { display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.75rem 1rem; border-radius: 3px; font-size: 0.9rem; border: 1px solid transparent; }
+.banner-error { background: rgba(244, 63, 94, 0.05); border-color: rgba(244, 63, 94, 0.25); color: #fda4af; }
 .simple-mode .banner-error { background: #fef2f2; border-color: #fca5a5; color: #991b1b; }
-.banner-guide {
-  background: rgba(59, 130, 246, 0.04);
-  border-color: rgba(59, 130, 246, 0.2);
-  color: var(--text-secondary);
-}
+.banner-guide { background: rgba(59, 130, 246, 0.04); border-color: rgba(59, 130, 246, 0.2); color: var(--text-secondary); }
 .simple-mode .banner-guide { background: #eff6ff; border-color: #bfdbfe; color: #1e3a8a; }
-.banner-guide-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
-}
-@media (min-width: 640px) {
-  .banner-guide-grid { grid-template-columns: repeat(3, 1fr); }
-}
+.banner-guide-grid { display: grid; grid-template-columns: 1fr; gap: 0.75rem; margin-top: 0.5rem; }
+@media (min-width: 640px) { .banner-guide-grid { grid-template-columns: repeat(3, 1fr); } }
 
-/* --------------------------------------------------------------------- 
-   10. WIDGET GRID LAYOUT
-   --------------------------------------------------------------------- */
-.widget-card-container {
-  background: var(--bg-card);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border-color);
-  border-radius: 3px;
-  box-shadow:
-    0 0 0 1px rgba(255,255,255,0.03) inset,
-    0 8px 24px rgba(0,0,0,0.25);
+/* ── 10. HEADER SUMMARY CARDS ── */
+.header-card {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
+  padding: 0.3rem 0.6rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  min-width: 85px;
+}
+.header-card-label {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.1rem;
+}
+.header-card-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: var(--text-mono);
 }
 
-.widget-drag-handle {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.35rem 0.5rem;
-  background-color: rgba(255, 255, 255, 0.03);
-  border-bottom: 1px solid var(--border-color);
-  cursor: grab;
+/* Simple-mode header card overrides */
+.simple-mode .header-card {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+.simple-mode .header-card-label {
+  color: #64748b;
+}
+.simple-mode .header-card-value {
+  color: #0f172a;
 }
 
-.widget-drag-handle:active {
-  cursor: grabbing;
-}
-
-.widget-close-btn {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.15rem;
-  border-radius: 3px;
-}
-
-.widget-close-btn:hover {
-  background-color: rgba(244, 63, 94, 0.1);
-  color: #f43f5e;
-}
-
-.widget-content-scrollable {
-  flex: 1;
-  overflow: auto;
+/* ── 11. PREMIUM SUMMARY TOOLTIPS ── */
+.header-card {
   position: relative;
+  cursor: help;
 }
-
-/* Strip border/padding from cards inside widgets so we don't double up */
-.widget-content-scrollable > .card {
-  border: none;
-  box-shadow: none;
-  background: transparent;
-  backdrop-filter: none;
-  height: 100%;
-  margin: 0;
+.header-card .header-tooltip {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  background: rgba(15, 23, 42, 0.96);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  width: 250px;
+  z-index: 1000;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+  text-align: left;
 }
-
-.react-grid-item.react-grid-placeholder {
-  background: rgba(59, 130, 246, 0.1) !important;
-  border: 1px dashed rgba(59, 130, 246, 0.5) !important;
-  border-radius: 3px;
+.simple-mode .header-card .header-tooltip {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
 }
-
+.header-card:hover .header-tooltip {
+  visibility: visible;
+  opacity: 1;
+  transform: translateX(-50%) translateY(4px);
+}
+.header-tooltip-title {
+  display: block;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #38bdf8;
+  margin-bottom: 0.2rem;
+  text-transform: uppercase;
+}
+.simple-mode .header-tooltip-title {
+  color: #2563eb;
+}
+.header-tooltip-desc {
+  display: block;
+  font-size: 0.78rem;
+  color: #e2e8f0;
+  line-height: 1.35;
+  margin-bottom: 0.4rem;
+}
+.simple-mode .header-tooltip-desc {
+  color: #334155;
+}
+.header-tooltip-example {
+  display: block;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 0.3rem;
+  font-style: italic;
+  line-height: 1.3;
+}
+.simple-mode .header-tooltip-example {
+  color: #64748b;
+  border-top: 1px solid #f1f5f9;
+}

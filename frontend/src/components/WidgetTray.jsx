@@ -24,7 +24,7 @@ export function InactiveWidgetRow({ id, isMinimized, icon, name, onRestore }) {
       style={{
         display: 'flex', alignItems: 'center', gap: '0.5rem',
         width: '100%', textAlign: 'left', background: 'none', border: 'none',
-        padding: '0.4rem 0.5rem', fontSize: '0.7rem', cursor: 'pointer', borderRadius: '3px',
+        padding: '0.4rem 0.5rem', fontSize: '0.88rem', cursor: 'pointer', borderRadius: '3px',
         color: isMinimized ? 'var(--text-primary)' : 'var(--text-secondary)',
       }}
       onMouseOver={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'}
@@ -35,7 +35,7 @@ export function InactiveWidgetRow({ id, isMinimized, icon, name, onRestore }) {
         {isMinimized && <div style={{ position: 'absolute', top: -4, right: -4, width: 6, height: 6, backgroundColor: 'var(--accent-brand)', borderRadius: '50%' }} />}
       </div>
       {name}
-      {isMinimized && <span style={{ fontSize: '0.55rem', color: 'var(--accent-brand)', marginLeft: 'auto' }}>Minimized</span>}
+      {isMinimized && <span style={{ fontSize: '0.84rem', color: 'var(--accent-brand)', marginLeft: 'auto' }}>Minimized</span>}
     </button>
   );
 }

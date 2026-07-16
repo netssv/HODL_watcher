@@ -9,6 +9,9 @@
 /* --------------------------------------------------------------------- 
    1. DESIGN TOKENS
    --------------------------------------------------------------------- */
+/* Root font size: 1rem = 15px — all rem values scale from this */
+html { font-size: 15px; }
+
 :root {
   /* Market direction — strict semantic use only */
   --up-color:     #10b981;

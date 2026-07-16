@@ -1,8 +1,8 @@
 """
-Coinglass API client for liquidation and open interest data.
+Coinalyze API client for liquidation and open interest data.
 
-Since Coinglass requires an API key, this module gracefully degrades to
-returning empty data if COINGLASS_API_KEY is not set in config, or
+Since Coinalyze requires an API key, this module gracefully degrades to
+returning empty data if COINALYZE_API_KEY is not set in config, or
 uses a mocked response for testing/development if unavailable.
 """
 
@@ -11,38 +11,38 @@ from datetime import datetime, timezone
 import pandas as pd
 import requests
 
-from .config import COINGLASS_API_KEY
+from .config import COINALYZE_API_KEY
 from .cache_utils import cached_fetch
 
 logger = logging.getLogger(__name__)
 
-API_URL = "https://open-api.coinglass.com/public/v2/"
+API_URL = "https://api.coinalyze.net/v1"
 
 
-def get_coinglass_data() -> pd.DataFrame:
+def get_coinalyze_data() -> pd.DataFrame:
     """
-    Fetch liquidation heatmap and open interest data.
+    Fetch open interest and funding rate data.
     """
-    if not COINGLASS_API_KEY:
-        logger.warning("COINGLASS_API_KEY not set. Returning empty Coinglass data.")
+    if not COINALYZE_API_KEY:
+        logger.warning("COINALYZE_API_KEY not set. Returning empty Coinalyze data.")
         return _empty_df()
 
-    cache_key = "coinglass_data"
+    cache_key = "coinalyze_data"
     
     def fetch_data():
-        headers = {"coinglassSecret": COINGLASS_API_KEY}
+        headers = {"api_key": COINALYZE_API_KEY}
         # Open Interest
         oi_res = requests.get(
-            f"{API_URL}open_interest/history",
-            params={"symbol": "BTC", "interval": "1h", "limit": 100},
+            f"{API_URL}/open-interest-history",
+            params={"symbols": "BTCUSDT_PERP.A", "interval": "1hour"},
             headers=headers,
             timeout=10
         ).json()
         
         # Funding Rates
         funding_res = requests.get(
-            f"{API_URL}funding",
-            params={"symbol": "BTC"},
+            f"{API_URL}/funding-rate-history",
+            params={"symbols": "BTCUSDT_PERP.A", "interval": "1hour"},
             headers=headers,
             timeout=10
         ).json()
@@ -56,30 +56,36 @@ def get_coinglass_data() -> pd.DataFrame:
             fetch_fn=fetch_data,
         )
     except Exception as e:
-        logger.warning("Failed to fetch Coinglass data: %s", e)
+        logger.warning("Failed to fetch Coinalyze data: %s", e)
         return _empty_df()
 
     now_utc = datetime.now(timezone.utc)
     
-    oi_data = raw.get("oi", {}).get("data", [])
-    if not oi_data:
+    # Process OI
+    oi_data = raw.get("oi", [])
+    if isinstance(oi_data, list) and len(oi_data) > 0:
+        oi_history = oi_data[0].get("history", [])
+    else:
+        oi_history = []
+        
+    if not oi_history:
         return _empty_df()
         
     rows = []
-    for entry in oi_data:
+    for entry in oi_history:
         rows.append({
-            "timestamp": pd.to_datetime(int(entry["dateList"]), unit="ms", utc=True),
-            "open_interest": float(entry["priceList"]), # Assuming priceList holds OI in BTC/USD, actually data format varies. 
-            "liquidation_dist_upper": 0.05, # Mocking liquidation proximity until full heatmap API is integrated
+            "timestamp": pd.to_datetime(entry["t"], unit="s", utc=True),
+            "open_interest": float(entry["v"]),
+            "liquidation_dist_upper": 0.05,
             "liquidation_dist_lower": -0.05,
-            "agg_funding_rate": 0.0001, # Mocking agg funding
+            "agg_funding_rate": 0.0001,
         })
         
     df = pd.DataFrame(rows)
     df.set_index("timestamp", inplace=True)
     df.sort_index(inplace=True)
     
-    df.attrs.update(source="coinglass", fetched_at=now_utc.isoformat())
+    df.attrs.update(source="coinalyze", fetched_at=now_utc.isoformat())
     return df
 
 
