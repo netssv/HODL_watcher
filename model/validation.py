@@ -3,6 +3,7 @@ Model training and walk-forward validation orchestrator.
 Enforces expanding train windows, embargo gaps, regularized RF with balanced weights, and baseline comparisons.
 """
 
+# pyrefly: ignore [missing-import]
 import numpy as np
 import pandas as pd
 from datetime import datetime, timezone
