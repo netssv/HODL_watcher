@@ -79,10 +79,18 @@ def build_features(
     # Phase 1 — local calculations (no future leak; all rolling backward)
     df['vwap_24'] = compute_vwap(df, window=24)
     df['realized_vol_24'] = compute_realized_volatility(df, window=24)
+    df['realized_vol_4'] = compute_realized_volatility(df, window=4)
     # Volume Delta = taker buy volume − taker sell volume (per candle)
     df['volume_delta'] = df['taker_buy_base'] - (df['volume'] - df['taker_buy_base'])
     # Cumulative Volume Delta: rolling 24-candle net taker flow
     df['cvd_24'] = df['volume_delta'].rolling(window=24, center=False).sum()
+    # CVD z-score: anomalous buy/sell pressure vs recent history
+    cvd_mean = df['cvd_24'].rolling(48, center=False).mean()
+    cvd_std  = df['cvd_24'].rolling(48, center=False).std().replace(0, np.nan)
+    df['cvd_zscore'] = (df['cvd_24'] - cvd_mean) / cvd_std
+    # Volatility regime: ratio of short-term to long-term realized vol
+    # <0.7 = compression (breakout likely), >1.5 = already moved (reversal risk)
+    df['rv_ratio'] = df['realized_vol_4'] / (df['realized_vol_24'] + 1e-9)
 
     # Convert index to a column to allow merge_asof
     df = df.reset_index()
@@ -98,6 +106,10 @@ def build_features(
             on='timestamp',
             direction='backward'
         )
+        df['funding_available'] = (~df['funding_rate'].isna()).astype(int)
+        df['funding_rate'] = df['funding_rate'].ffill().fillna(0)
+        # Velocity of funding change: captures sentiment shift, not just level
+        df['funding_rate_delta_8h'] = df['funding_rate'].diff(8)
         df['funding_rate_diff_7'] = df['funding_rate'].diff(7)
         
     if long_short_df is not None and not long_short_df.empty:
@@ -122,6 +134,10 @@ def build_features(
             direction='backward'
         )
         df['futures_basis'] = (df['futures_close'] - df['close']) / (df['close'] + 1e-9)
+        # Basis z-score: abnormal futures premium/discount vs 48h history
+        basis_mean = df['futures_basis'].rolling(48, center=False).mean()
+        basis_std  = df['futures_basis'].rolling(48, center=False).std().replace(0, np.nan)
+        df['basis_zscore'] = (df['futures_basis'] - basis_mean) / basis_std
 
     # 4. Join Fear & Greed Index
     if fear_greed_df is not None and not fear_greed_df.empty:
@@ -170,6 +186,9 @@ def build_features(
         top_50_bid_vol = bids.nlargest(50, 'price')['quantity'].sum() if not bids.empty else 0
         top_50_ask_vol = asks.nsmallest(50, 'price')['quantity'].sum() if not asks.empty else 0
         df['ob_imbalance_50'] = (top_50_bid_vol - top_50_ask_vol) / (top_50_bid_vol + top_50_ask_vol + 1e-9)
+        # Proximity to support/resistance: % distance from current price to best bid/ask
+        if best_bid and not np.isnan(best_bid):
+            df['ob_pressure'] = (df['close'] - best_bid) / (df['close'] + 1e-9)
 
     # 7. Join Coinalyze, Deribit, Onchain, ETF, Hyperliquid
     for name, extra_df in [('coinalyze', coinalyze_df), ('deribit', deribit_df), ('onchain', onchain_df), ('etf', etf_df), ('hyperliquid', hyperliquid_df)]:

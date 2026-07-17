@@ -18,8 +18,6 @@ export function AddWidgetMenu({ hiddenWidgets, addWidget, resetLayout }) {
   const widgetNames = {
     projections: 'Directional Projections',
     chart: 'Chart',
-    strategy: 'Strategy',
-    risk: 'Risk Management',
     llm: 'LLM Payload',
     validation: 'Walk-Forward Trend'
   };

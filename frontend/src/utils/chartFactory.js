@@ -7,6 +7,7 @@ import {
   createChart,
   CandlestickSeries,
   HistogramSeries,
+  LineSeries,
   createSeriesMarkers,
 } from 'lightweight-charts';
 
@@ -81,8 +82,31 @@ export function applyCandles(chart, data, predictionData, thresholdPct) {
   if (!predictionData || !price) return { ser, predLines: [] };
 
   const predLines = [];
+  const lastCandle = data.at(-1);
+  const secondLast = data.at(-2);
+  const tfSeconds = lastCandle && secondLast ? (lastCandle.time - secondLast.time) : 3600;
+
+  // Project lines starting from the last candle, extending 10 intervals into the future
+  const futureData = [
+    { time: lastCandle.time, value: null }, // placeholder structure
+    { time: lastCandle.time + tfSeconds * 12, value: null }
+  ];
+
   const mkLine = (opts) => {
-    predLines.push({ line: ser.createPriceLine(opts), color: opts.color });
+    const line = chart.addSeries(LineSeries, {
+      color: opts.color,
+      lineWidth: opts.lineWidth,
+      lineStyle: opts.lineStyle,
+      priceLineVisible: false,
+      lastValueVisible: opts.axisLabelVisible,
+      crosshairMarkerVisible: false,
+      title: opts.title,
+    });
+    line.setData([
+      { time: lastCandle.time, value: opts.price },
+      { time: lastCandle.time + tfSeconds * 20, value: opts.price }
+    ]);
+    predLines.push({ line, color: opts.color });
   };
 
   // ── ATR-derived SL / TP bands ─────────────────────────────────────────────
@@ -90,13 +114,13 @@ export function applyCandles(chart, data, predictionData, thresholdPct) {
   const rm = predictionData.risk_management;
   const slPct = rm?.dynamic_sl_pct > 0 ? rm.dynamic_sl_pct / 100 : thresholdPct;
   const tpPct = rm?.dynamic_tp_pct > 0 ? rm.dynamic_tp_pct / 100 : thresholdPct * 1.5;
-  const slLabel = `SL ${(slPct * 100).toFixed(2)}% (2×ATR)`;
-  const tpLabel = `TP ${(tpPct * 100).toFixed(2)}% (3×ATR)`;
+  const slPctFmt = (slPct * 100).toFixed(2);
+  const tpPctFmt = (tpPct * 100).toFixed(2);
 
-  mkLine({ price: price * (1 + tpPct), color: 'rgba(16,185,129,0.90)', lineWidth: 2, lineStyle: STYLE_SOLID,  axisLabelVisible: true, title: `+${tpLabel}` });
-  mkLine({ price: price * (1 - tpPct), color: 'rgba(16,185,129,0.55)', lineWidth: 1, lineStyle: STYLE_DASHED, axisLabelVisible: true, title: `-${tpLabel}` });
-  mkLine({ price: price * (1 + slPct), color: 'rgba(244,63,94,0.55)',  lineWidth: 1, lineStyle: STYLE_DASHED, axisLabelVisible: true, title: `+${slLabel}` });
-  mkLine({ price: price * (1 - slPct), color: 'rgba(244,63,94,0.90)', lineWidth: 2, lineStyle: STYLE_SOLID,  axisLabelVisible: true, title: `-${slLabel}` });
+  mkLine({ price: price * (1 + tpPct), color: 'rgba(16,185,129,0.90)', lineWidth: 2, lineStyle: STYLE_SOLID,  axisLabelVisible: true, title: `🎯 Long Exit +${tpPctFmt}%` });
+  mkLine({ price: price * (1 - tpPct), color: 'rgba(16,185,129,0.55)', lineWidth: 2, lineStyle: STYLE_DASHED, axisLabelVisible: true, title: `🎯 Short Exit -${tpPctFmt}%` });
+  mkLine({ price: price * (1 + slPct), color: 'rgba(244,63,94,0.55)',  lineWidth: 2, lineStyle: STYLE_DASHED, axisLabelVisible: true, title: `🛑 Short Stop +${slPctFmt}%` });
+  mkLine({ price: price * (1 - slPct), color: 'rgba(244,63,94,0.90)', lineWidth: 2, lineStyle: STYLE_SOLID,  axisLabelVisible: true, title: `🛑 Long Stop -${slPctFmt}%` });
 
   // ── Liquidation proximity levels ─────────────────────────────────────────
   const liq = predictionData.market_snapshot?.liquidation_proximity;
@@ -105,6 +129,7 @@ export function applyCandles(chart, data, predictionData, thresholdPct) {
     mkLine({ price: price * (1 + (liq.upper || 0.02)),        color: LIQ_COLOR, lineWidth: 2, lineStyle: STYLE_DASHED, axisLabelVisible: true, title: 'Liq↑' });
     mkLine({ price: price * (1 - Math.abs(liq.lower || 0.02)), color: LIQ_COLOR, lineWidth: 2, lineStyle: STYLE_DASHED, axisLabelVisible: true, title: 'Liq↓' });
   }
+
 
   // ── Directional prediction marker ─────────────────────────────────────────
   const { up, down, sideways } = predictionData.model_prediction.direction_probabilities;

@@ -5,8 +5,6 @@ import { Activity } from 'lucide-react';
 export const WIDGET_NAMES = {
   projections: 'Directional Projections',
   chart:       'Chart',
-  strategy:    'Strategy',
-  risk:        'Risk Management',
   llm:         'LLM Payload',
   validation:  'Walk-Forward Trend',
 };

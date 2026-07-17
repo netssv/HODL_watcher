@@ -18,6 +18,20 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
 
 _LATEST_TRAINING_REPORT: Optional[Dict[str, Any]] = None
+_WARMING_UP = False
+
+def warmup_training():
+    """Called once at startup in a background thread."""
+    global _WARMING_UP
+    _WARMING_UP = True
+    try:
+        logger.info("Background warmup: training model...")
+        _train(horizon=24, folds=10, threshold=0.005, limit=3000)
+        logger.info("Background warmup complete.")
+    except Exception as e:
+        logger.error("Warmup training failed: %s", e)
+    finally:
+        _WARMING_UP = False
 
 def _build(sources: dict, cfg=None):
     """Helper to build features with optional config."""
@@ -37,14 +51,14 @@ def _build(sources: dict, cfg=None):
         hyperliquid_df=sources.get("hyperliquid_df")
     )
 
-def _train(horizon: int, folds: int, threshold: float, cfg=None, limit=600):
+def _train(horizon: int, folds: int, threshold: float, cfg=None, limit=3000):
     global _LATEST_TRAINING_REPORT
     srcs, gaps = fetch_all_sources(limit=limit, interval="1h")
     if srcs["spot_df"] is None or srcs["spot_df"].empty:
         raise HTTPException(status_code=400, detail="Binance Spot dataset missing.")
     df, target = prepare_target(_build(srcs, cfg), horizon=horizon, threshold_pct=threshold)
-    if len(df) < 100:
-        raise HTTPException(status_code=400, detail="Insufficient training samples.")
+    if len(df) < 500:
+        raise HTTPException(status_code=400, detail=f"Insufficient training samples ({len(df)}). Need ≥500.")
     _LATEST_TRAINING_REPORT = run_walk_forward_validation(df, target, folds, horizon)
     return _LATEST_TRAINING_REPORT, gaps
 
@@ -109,11 +123,9 @@ def get_prediction():
     
     latest_row = _build(srcs).iloc[-1].to_dict()
     
-    if _LATEST_TRAINING_REPORT is None:
-        logger.info("Running initial training model.")
-        _, train_gaps = _train(horizon=24, folds=8, threshold=0.005, limit=500)
-        gaps.extend(train_gaps)
-        
+    if _WARMING_UP or _LATEST_TRAINING_REPORT is None:
+        raise HTTPException(status_code=503, detail="Model warming up, retry in a moment.")
+
     rsi, fg = latest_row.get("rsi_6", 50.0), latest_row.get("fear_greed", 50.0)
     up, dn = 0.35 + 0.15*(fg/100) - 0.1*(rsi/100), 0.35 - 0.1*(fg/100) + 0.15*(rsi/100)
     

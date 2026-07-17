@@ -1,8 +1,27 @@
 import { useState, useEffect, useRef } from 'react';
 import { deriveStrategy } from '../utils.jsx';
 
-const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API = import.meta.env.VITE_API_BASE_URL || '';
 const THROTTLE_MS = 5000;
+
+// Poll /api/predict until it succeeds. Silently retries 503 (model warming up).
+// Max wait: 30 attempts x 10s = 5 minutes.
+async function fetchWithRetry(url, retries = 30, delayMs = 10000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) return res;
+      if (res.status !== 503) throw new Error(`Server error ${res.status}`);
+      // 503 = model still warming up, keep polling silently
+    } catch (e) {
+      if (i === retries - 1) throw new Error('Backend unreachable. Run ./dev.sh');
+    }
+    await new Promise(r => setTimeout(r, delayMs));
+  }
+  throw new Error('Model warmup exceeded 5 minutes.');
+}
+
+
 
 export function usePredictData(playChime) {
   // Config
@@ -32,8 +51,10 @@ export function usePredictData(playChime) {
     if (!force && lastFetchedTime && now - lastFetchedTime < THROTTLE_MS) return;
     setLoading(true); setError(null);
     try {
-      const res = await fetch(`${API}/api/predict`);
-      if (!res.ok) throw new Error('Backend unreachable. Start uvicorn.');
+      // Use retry only on the first auto-fetch (not force refreshes)
+      const fetcher = !force ? fetchWithRetry : fetch;
+      const res = await fetcher(`${API}/api/predict`);
+      if (!res.ok) throw new Error(`Server error ${res.status}`);
       const data = await res.json();
       
       if (prevPredictionRef.current && data.payload) {

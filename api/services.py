@@ -7,11 +7,46 @@ from data_ingestion import (
 
 def fetch_all_sources(limit: int = 500, interval: str = "1h") -> Tuple[Dict[str, Any], List[str]]:
     """Helper that fetches datasets from all modules and flags gaps."""
+    import pandas as pd
     data_gaps = []
-    
+    def _paginate(fetch_fn, total_limit, max_page=1000):
+        """Fetch up to total_limit by walking backwards in pages."""
+        if total_limit <= max_page:
+            return fetch_fn(limit=total_limit)
+        pages = []
+        end_time = None
+        remaining = total_limit
+        while remaining > 0:
+            page_limit = min(remaining, max_page)
+            try:
+                kwargs = dict(limit=page_limit)
+                if end_time is not None:
+                    kwargs['end_time'] = end_time
+                page = fetch_fn(**kwargs)
+            except Exception:
+                break
+            if page is None or page.empty:
+                break
+            pages.append(page)
+            remaining -= len(page)
+            # Walk backwards: next page ends just before earliest index
+            earliest_ms = int(page.index.min().timestamp() * 1000) - 1
+            end_time = earliest_ms
+            if len(page) < page_limit:
+                break  # No more history available
+        if not pages:
+            return pd.DataFrame()
+        combined = pd.concat(pages).sort_index()
+        combined = combined[~combined.index.duplicated(keep='last')]
+        return combined
+
     # 1. Binance Spot
     try:
-        spot_df = binance_spot.get_klines(symbol="BTCUSDT", interval=interval, limit=limit)
+        spot_df = _paginate(
+            lambda **kw: binance_spot.get_klines(symbol="BTCUSDT", interval=interval, **kw),
+            limit,
+            max_page=1000
+        )
         if spot_df.empty:
             data_gaps.append("binance_spot: Empty response returned")
     except Exception as e:
@@ -23,24 +58,36 @@ def fetch_all_sources(limit: int = 500, interval: str = "1h") -> Tuple[Dict[str,
     funding_df = None
     long_short_df = None
     try:
-        futures_df = binance_futures.get_klines(symbol="BTCUSDT", interval=interval, limit=limit)
+        futures_df = _paginate(
+            lambda **kw: binance_futures.get_klines(symbol="BTCUSDT", interval=interval, **kw),
+            limit,
+            max_page=1000
+        )
     except Exception as e:
         data_gaps.append(f"binance_futures_klines: {str(e)}")
         
     try:
-        funding_df = binance_futures.get_funding_rate(symbol="BTCUSDT", limit=limit)
+        funding_df = _paginate(
+            lambda **kw: binance_futures.get_funding_rate(symbol="BTCUSDT", **kw),
+            limit,
+            max_page=1000
+        )
     except Exception as e:
         data_gaps.append(f"binance_futures_funding: {str(e)}")
         
     try:
-        long_short_df = binance_futures.get_long_short_ratio(symbol="BTCUSDT", period=interval, limit=limit)
+        long_short_df = _paginate(
+            lambda **kw: binance_futures.get_long_short_ratio(symbol="BTCUSDT", period=interval, **kw),
+            limit,
+            max_page=500
+        )
     except Exception as e:
         data_gaps.append(f"binance_futures_long_short: {str(e)}")
 
     # 3. Fear & Greed
     fear_greed_df = None
     try:
-        fear_greed_df = fear_greed.get_fear_greed_index(limit=limit)
+        fear_greed_df = fear_greed.get_fear_greed_index(limit=min(limit, 1000))
     except Exception as e:
         data_gaps.append(f"fear_greed: {str(e)}")
 

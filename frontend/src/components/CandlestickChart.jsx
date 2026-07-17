@@ -1,8 +1,11 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
+import { LineSeries } from 'lightweight-charts';
 import { buildBaseChart, applyCandles, applyVolume } from '../utils/chartFactory';
 import { applyEMA, applyBB, applyRSIChart, applyVWAP } from '../utils/chartIndicators';
 import { calcEMA, calcBB, calcRSI, calcVWAP } from '../utils/chartMath';
 import { useChartData, useRsiResize, useChartResize, fetchOlderCandles } from '../hooks/useChartData';
+import { useLiqMap } from '../hooks/useLiqMap';
+import { useVisiblePriceRange } from '../hooks/useVisiblePriceRange';
 import { ChartControls, ChartHeader, MainChartArea, RsiPanel } from './ChartUI';
 
 export default function CandlestickChart({ predictionData, thresholdPct, globalLivePrice }) {
@@ -10,17 +13,19 @@ export default function CandlestickChart({ predictionData, thresholdPct, globalL
   const chartRef = useRef(null), rsiChartRef = useRef(null);
   const candleSerRef = useRef(null), volSerRef = useRef(null);
   const emaSeriesRef = useRef({}), bbSeriesRef = useRef(null), rsiSeriesRef = useRef(null);
-  const vwapSeriesRef = useRef(null), liqSeriesRef = useRef([]), predLinesRef = useRef([]);
+  const vwapSeriesRef = useRef(null), predLinesRef = useRef([]);
   const loadingMoreRef = useRef(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  const [timeframe, setTF]            = useState('1h');
+  const [timeframe, setTF]            = useState('4h');
   const [activeEMAs, setActiveEMAs]   = useState([]);
   const [showBB, setBB]               = useState(false);
   const [showRSI, setRSI]             = useState(false);
   const [showVWAP, setVWAP]           = useState(false);
   const [showLiqMap, setLiqMap]       = useState(true);
   const [showPredLines, setPredLines] = useState(true);
+  const [chartVersion, setChartVersion] = useState(0);
+  const [rangePreset, setRangePreset] = useState('7D');
 
   const teardown = () => {
     chartRef.current?.remove();    chartRef.current = null;
@@ -28,7 +33,7 @@ export default function CandlestickChart({ predictionData, thresholdPct, globalL
     candleSerRef.current = null;   volSerRef.current = null;
     emaSeriesRef.current = {};     bbSeriesRef.current = null;
     rsiSeriesRef.current = null;   vwapSeriesRef.current = null;
-    liqSeriesRef.current = [];     predLinesRef.current = [];
+    predLinesRef.current = [];
   };
 
   const buildAll = useCallback((data) => {
@@ -39,8 +44,12 @@ export default function CandlestickChart({ predictionData, thresholdPct, globalL
     candleSerRef.current = ser;
     predLinesRef.current = predLines;
     volSerRef.current    = applyVolume(chart, data);
-    chart.timeScale().fitContent();
+    chart.timeScale().setVisibleLogicalRange({
+      from: data.length - 100,
+      to: data.length + 8, // Adds some blank space on the right for future lines
+    });
     chartRef.current = chart;
+    setChartVersion(v => v + 1); // triggers visible range subscription
   }, [predictionData, thresholdPct]);
 
   const { rsiHeight, handleDragStart } = useRsiResize(rsiChartRef, mainRef, chartRef);
@@ -62,14 +71,17 @@ export default function CandlestickChart({ predictionData, thresholdPct, globalL
     });
 
     if (showBB && !bbSeriesRef.current) {
-      bbSeriesRef.current = applyBB(chart, candlesRef.current);
+      bbSeriesRef.current = applyBB(chart, candlesRef.current, candleSerRef.current);
     } else if (!showBB && bbSeriesRef.current) {
       try {
         if (bbSeriesRef.current.upSer) chart.removeSeries(bbSeriesRef.current.upSer);
         if (bbSeriesRef.current.dnSer) chart.removeSeries(bbSeriesRef.current.dnSer);
+        if (bbSeriesRef.current.midSer) chart.removeSeries(bbSeriesRef.current.midSer);
+        if (bbSeriesRef.current.primitive) candleSerRef.current.detachPrimitive(bbSeriesRef.current.primitive);
       } catch (_) {}
       bbSeriesRef.current = null;
     }
+
 
     if (showVWAP && !vwapSeriesRef.current) {
       vwapSeriesRef.current = applyVWAP(chart, candlesRef.current);
@@ -110,8 +122,19 @@ export default function CandlestickChart({ predictionData, thresholdPct, globalL
           Object.entries(emaSeriesRef.current).forEach(([p, ser]) => ser?.setData(calcEMA(merged, Number(p))));
           if (bbSeriesRef.current) {
             const { upper, lower } = calcBB(merged);
-            bbSeriesRef.current.upSer?.setData(upper); bbSeriesRef.current.dnSer?.setData(lower);
+            bbSeriesRef.current.upSer?.setData(upper);
+            bbSeriesRef.current.dnSer?.setData(lower);
+            const middle = merged.map((d, i) => {
+              if (i < 19) return { time: d.time, value: d.close };
+              const slice = merged.slice(i - 19, i + 1).map(x => x.close);
+              const mean = slice.reduce((a, b) => a + b, 0) / 20;
+              return { time: d.time, value: +mean.toFixed(2) };
+            });
+            bbSeriesRef.current.midSer?.setData(middle);
+            bbSeriesRef.current.primitive?.updateData(upper, lower);
           }
+
+
           vwapSeriesRef.current?.setData(calcVWAP(merged));
           rsiSeriesRef.current?.setData(calcRSI(merged));
         }
@@ -135,37 +158,28 @@ export default function CandlestickChart({ predictionData, thresholdPct, globalL
   }, []);
 
   const displayPrice = globalLivePrice ?? ohlc?.close ?? null;
+  const visibleRange = useVisiblePriceRange(chartRef, candleSerRef, mainRef, chartVersion);
 
-  useEffect(() => {
-    const ser = candleSerRef.current;
-    if (!ser) return;
-    liqSeriesRef.current.forEach(line => { try { ser.removePriceLine(line); } catch (_) {} });
-    liqSeriesRef.current = [];
-    if (!showLiqMap) return;
-    const price = candlesRef.current?.at(-1)?.close ?? displayPrice;
-    if (!price) return;
-
-    const BANDS = [
-      [0.003, 'rgba(253,224,71,0.70)'], [0.006, 'rgba(251,191,36,0.65)'],
-      [0.009, 'rgba(245,158,11,0.58)'],  [0.012, 'rgba(234,88,12,0.50)'],
-      [0.018, 'rgba(34,211,238,0.45)'],  [0.025, 'rgba(20,184,166,0.40)'],
-      [0.032, 'rgba(16,185,129,0.35)'],  [0.042, 'rgba(59,130,246,0.28)'],
-      [0.054, 'rgba(99,102,241,0.22)'],  [0.068, 'rgba(139,92,246,0.16)'],
-    ];
-    BANDS.forEach(([pct, color]) => {
-      [1 + pct, 1 - pct].forEach(mult => {
-        liqSeriesRef.current.push(ser.createPriceLine({
-          price: price * mult, color, lineWidth: 3, lineStyle: 0, axisLabelVisible: false, title: ''
-        }));
-      });
-    });
-  }, [showLiqMap, displayPrice]);
+  // Custom hook handles moving historical bands + future horizontal active liquidation lines
+  useLiqMap(chartRef, candleSerRef, candlesRef, showLiqMap, displayPrice, predictionData);
 
   useEffect(() => {
     predLinesRef.current.forEach(({ line, color }) => {
       try { line.applyOptions({ color: showPredLines ? color : 'transparent' }); } catch (_) {}
     });
   }, [showPredLines]);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    const candles = candlesRef.current;
+    if (!chart || !candles?.length) return;
+    const SECS = { '3D': 259200, '7D': 604800, '1M': 2592000 };
+    const s = SECS[rangePreset];
+    if (!s) { chart.timeScale().fitContent(); return; }
+    const last = candles.at(-1).time;
+    const fromIdx = candles.findIndex(c => c.time >= last - s);
+    chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, fromIdx - 2), to: candles.length + 8 });
+  }, [rangePreset, chartVersion]);
 
   const toggleEMA = (p) => setActiveEMAs(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]);
 
@@ -174,9 +188,10 @@ export default function CandlestickChart({ predictionData, thresholdPct, globalL
       <ChartControls timeframe={timeframe} setTF={setTF} activeEMAs={activeEMAs} toggleEMA={toggleEMA}
         showBB={showBB} setBB={setBB} showRSI={showRSI} setRSI={setRSI} showVWAP={showVWAP} setVWAP={setVWAP}
         showLiqMap={showLiqMap} setLiqMap={setLiqMap} showPredLines={showPredLines} setPredLines={setPredLines}
-        loading={loading} err={err} loadingMore={loadingMore} />
+        loading={loading} err={err} loadingMore={loadingMore}
+        rangePreset={rangePreset} setRangePreset={setRangePreset} />
       <ChartHeader ohlc={ohlc} price={displayPrice} />
-      <MainChartArea mainRef={mainRef} loading={loading} err={err} activeEMAs={activeEMAs} showBB={showBB} chartRef={chartRef} />
+      <MainChartArea mainRef={mainRef} loading={loading} err={err} activeEMAs={activeEMAs} showBB={showBB} chartRef={chartRef} predictionData={predictionData} showLiqMap={showLiqMap} displayPrice={displayPrice} visibleRange={visibleRange} />
       {showRSI && <RsiPanel rsiRef={rsiRef} rsiHeight={rsiHeight} handleDragStart={handleDragStart} />}
     </section>
   );

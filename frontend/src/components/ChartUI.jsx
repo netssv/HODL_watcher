@@ -7,9 +7,10 @@ import {
   OHLCBar,
   IndicatorLegend
 } from './ChartSubComponents';
+import { LiqProfilePanel } from './LiqProfilePanel';
 
 // ── Chart Controls ────────────────────────────────────────────────────────────
-export function ChartControls({ timeframe, setTF, activeEMAs, toggleEMA, showBB, setBB, showRSI, setRSI, showVWAP, setVWAP, showLiqMap, setLiqMap, showPredLines, setPredLines, loading, err, loadingMore }) {
+export function ChartControls({ timeframe, setTF, activeEMAs, toggleEMA, showBB, setBB, showRSI, setRSI, showVWAP, setVWAP, showLiqMap, setLiqMap, showPredLines, setPredLines, loading, err, loadingMore, rangePreset, setRangePreset }) {
   return (
     <div className="chart-controls">
       {/* Row 1 — timeframe + LIVE badge */}
@@ -23,6 +24,19 @@ export function ChartControls({ timeframe, setTF, activeEMAs, toggleEMA, showBB,
               className={`tf-pill${timeframe === tf ? ' tf-pill--active' : ''}`}
             >
               {tf.toUpperCase()}
+            </button>
+          ))}
+        </div>
+        <Sep />
+        <span className="chart-controls__label">Range</span>
+        <div className="chart-controls__group">
+          {['3D', '7D', '1M', 'ALL'].map(r => (
+            <button
+              key={r}
+              onClick={() => setRangePreset(r)}
+              className={`tf-pill${rangePreset === r ? ' tf-pill--active' : ''}`}
+            >
+              {r}
             </button>
           ))}
         </div>
@@ -71,26 +85,39 @@ export function ChartHeader({ ohlc, price }) {
 }
 
 // ── Main Chart Area ───────────────────────────────────────────────────────────
-export function MainChartArea({ mainRef, loading, err, activeEMAs, showBB, chartRef }) {
+export function MainChartArea({ mainRef, loading, err, activeEMAs, showBB, chartRef, predictionData, showLiqMap, displayPrice, visibleRange }) {
+  const liq = predictionData?.market_snapshot?.liquidation_proximity;
+  const hasProfile = showLiqMap && liq && !loading && !err;
+
   return (
-    <div style={{ position: 'relative', flexGrow: 1, minHeight: '300px', width: '100%' }}>
-      <IndicatorLegend activeEMAs={activeEMAs} showBB={showBB} />
-      <CrosshairTooltip chartRef={chartRef} />
-      {loading && (
-        <div className="chart-overlay">
-          <span className="chart-loading-spinner" />
-          <span style={{ marginLeft: '.5rem', fontSize: '.75rem', color: 'var(--text-secondary)' }}>
-            Connecting to Binance…
-          </span>
-        </div>
+    // Outer row: chart pane + liquidation profile panel side-by-side
+    <div style={{ display: 'flex', flexDirection: 'row', flexGrow: 1, minHeight: '300px', width: '100%', overflow: 'hidden' }}>
+
+      {/* Chart pane — fills remaining width, resizes automatically via ResizeObserver */}
+      <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+        <IndicatorLegend activeEMAs={activeEMAs} showBB={showBB} />
+        <CrosshairTooltip chartRef={chartRef} />
+        {loading && (
+          <div className="chart-overlay">
+            <span className="chart-loading-spinner" />
+            <span style={{ marginLeft: '.5rem', fontSize: '.75rem', color: 'var(--text-secondary)' }}>
+              Connecting to Binance…
+            </span>
+          </div>
+        )}
+        {err && (
+          <div className="chart-overlay" style={{ color: '#f43f5e', fontSize: '.75rem' }}>⚠ {err}</div>
+        )}
+        <div
+          ref={mainRef}
+          style={{ position: 'absolute', inset: 0, opacity: loading || err ? 0 : 1, transition: 'opacity 0.4s' }}
+        />
+      </div>
+
+      {/* Liquidation profile panel — sibling, not overlay */}
+      {hasProfile && (
+        <LiqProfilePanel predictionData={predictionData} currentPrice={displayPrice} visibleRange={visibleRange} />
       )}
-      {err && (
-        <div className="chart-overlay" style={{ color: '#f43f5e', fontSize: '.75rem' }}>⚠ {err}</div>
-      )}
-      <div
-        ref={mainRef}
-        style={{ position: 'absolute', inset: 0, opacity: loading || err ? 0 : 1, transition: 'opacity 0.4s' }}
-      />
     </div>
   );
 }

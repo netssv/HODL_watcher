@@ -17,6 +17,18 @@ VENV="$ROOT/.venv/bin"
 LOG_DIR="$ROOT/.dev_logs"
 mkdir -p "$LOG_DIR"
 
+# ── Resolve a working npm (skip broken Flatpak/container shims) ──────────────
+NPM_CMD=""
+while IFS= read -r candidate; do
+  # Skip shims that delegate to host-spawn (they fail outside the container)
+  if grep -q "host-spawn" "$candidate" 2>/dev/null; then
+    continue
+  fi
+  NPM_CMD="$candidate"
+  break
+done < <(which -a npm 2>/dev/null)
+[[ -z "$NPM_CMD" ]] && NPM_CMD="npm"  # fallback
+
 # ── Colours ──────────────────────────────────────────────────────────────────
 BOLD='\033[1m'
 CYAN='\033[1;36m'
@@ -31,7 +43,7 @@ RESET='\033[0m'
 banner() {
   echo ""
   echo -e "${CYAN}${BOLD}╔══════════════════════════════════════════════╗${RESET}"
-  echo -e "${CYAN}${BOLD}║         🪙  HODL Watcher  Dev Launcher        ║${RESET}"
+  echo -e "${CYAN}${BOLD}║         🪙  HODL Watcher  Dev Launcher       ║${RESET}"
   echo -e "${CYAN}${BOLD}╚══════════════════════════════════════════════╝${RESET}"
   echo ""
 }
@@ -85,19 +97,28 @@ wait_for_port() {
 check_venv() {
   if [[ ! -x "$VENV/python" ]]; then
     err "Virtual-env not found at .venv/"
-    info "Create it with:  python3 -m venv .venv && .venv/bin/pip install -e '.[dev]'"
+    echo ""
+    info "Run this once on each new computer:"
+    echo "    ${BOLD}./setup.sh${RESET}"
+    echo ""
+    info "Or manually:"
+    echo "    python3 -m venv .venv"
+    echo "    .venv/bin/pip install -e '.[dev]'"
     exit 1
   fi
 }
 
 check_node() {
-  if ! command -v npm &>/dev/null; then
+  if ! command -v "$NPM_CMD" &>/dev/null; then
     err "npm not found — install Node.js first."
+    echo ""
+    info "Get Node.js from https://nodejs.org/ or use nvm"
+    echo "    https://github.com/nvm-sh/nvm"
     exit 1
   fi
   if [[ ! -d "$ROOT/frontend/node_modules" ]]; then
     warn "node_modules missing. Installing frontend deps..."
-    (cd "$ROOT/frontend" && npm install --silent)
+    (cd "$ROOT/frontend" && $NPM_CMD install --silent)
   fi
 }
 
@@ -107,7 +128,7 @@ start_backend() {
   kill_port 8000
   log "Starting FastAPI backend..."
   "$VENV/uvicorn" api.app:app \
-    --host 127.0.0.1 --port 8000 --reload \
+    --host 0.0.0.0 --port 8000 --reload \
     --log-level info \
     2>&1 | sed "s/^/$(printf "${CYAN}[backend]${RESET} ")/" &
   BACKEND_PID=$!
@@ -118,7 +139,7 @@ start_frontend() {
   check_node
   kill_port 5173
   log "Starting Vite frontend..."
-  (cd "$ROOT/frontend" && npm run dev -- --host 127.0.0.1 2>&1 \
+  (cd "$ROOT/frontend" && $NPM_CMD run dev -- --host 127.0.0.1 2>&1 \
     | sed "s/^/$(printf "${MAGENTA}[frontend]${RESET} ")/") &
   FRONTEND_PID=$!
   wait_for_port 5173 "Frontend"

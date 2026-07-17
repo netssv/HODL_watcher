@@ -10,18 +10,27 @@ Ensures:
 
 import os
 import logging
+import threading
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.routes import router
+from api.routes import router, warmup_training
 
 # Setup logger
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Warm up model in background — predict returns 503 until done
+    threading.Thread(target=warmup_training, daemon=True).start()
+    yield
+
 app = FastAPI(
     title="HODL Watcher API",
     description="BTC/USDT Quantitative Analysis Backend",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 # CORS — explicit origins for production, env var override for flexibility

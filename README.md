@@ -12,6 +12,19 @@ A quantitative dashboard and honest strategy generator for BTC/USDT. It combines
 
 ## Quick Start
 
+### First Time Setup (One-Time Per Computer)
+
+```bash
+./setup.sh
+```
+
+This will:
+- Create and activate the Python virtual environment (`.venv`)
+- Install Python dependencies
+- Install Node.js dependencies (`node_modules`)
+
+**After setup, the project is ready to run.** If you switch to another computer, run `./setup.sh` once on that machine too.
+
 ### Backend
 1. Set up your API credentials in .env (FRED, NewsAPI, Deribit).
 2. Install dependencies and start the FastAPI service:
@@ -28,3 +41,54 @@ A quantitative dashboard and honest strategy generator for BTC/USDT. It combines
    ```bash
    npm run dev
    ```
+
+### Run Everything at Once
+
+```bash
+./dev.sh
+```
+
+This starts both backend (port 8000) and frontend (port 5173) in parallel.
+
+## Troubleshooting
+
+### "Connection Issue" Error When Switching Computers
+
+**Problem:** You see `**Connection Issue:** Start backend using: `.venv/bin/uvicorn api.app:app --reload``
+
+**Solution:** The `.venv` folder and `node_modules` don't exist on this computer. Run setup once:
+
+```bash
+./setup.sh
+```
+
+### Backend Won't Start
+
+1. Check if port 8000 is already in use:
+   ```bash
+   lsof -i :8000  # macOS/Linux
+   netstat -ano | findstr :8000  # Windows
+   ```
+2. Kill any existing process on port 8000
+3. Re-run: `./dev.sh backend`
+
+### Frontend Won't Start
+
+1. Ensure Node.js is installed: `node --version`
+2. Delete `node_modules` and reinstall:
+   ```bash
+   rm -rf frontend/node_modules
+   ./setup.sh
+   ```
+
+### Virtual Environment Issues
+
+If you get errors about missing packages even after `./setup.sh`:
+
+```bash
+# Manually recreate the venv
+rm -rf .venv
+python3 -m venv .venv
+.venv/bin/pip install -e ".[dev]"
+./dev.sh
+```

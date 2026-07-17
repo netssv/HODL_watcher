@@ -136,17 +136,7 @@ export default function App() {
               )}
               
 
-              
-              <div key="strategy" id="strategy" title="Strategy">
-                <StrategyCard strategy={strategy} />
-              </div>
-              
-              {!isSimpleMode && (
-                <div key="risk" id="risk" title="Risk Management">
-                  <RiskManagementCard riskParams={predictionData?.risk_management} />
-                </div>
-              )}
-              
+
               {!isSimpleMode && (
                 <div key="llm" id="llm" title="LLM Agent Payload">
                   <LLMPayloadCard payload={predictionData} />
