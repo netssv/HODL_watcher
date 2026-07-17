@@ -151,8 +151,22 @@ export default function App() {
             </WidgetGrid>
             
             {predictionData && (
-              <footer className="footer-text" style={{ marginTop: '1rem', padding: '0 1rem' }}>
-                <p>{predictionData.disclaimers?.[0]}</p>
+              <footer
+                className="footer-text"
+                style={{
+                  marginTop: '1.25rem',
+                  padding: '0.75rem 1rem',
+                  borderTop: '1px solid rgba(148, 163, 184, 0.2)',
+                  color: 'var(--text-secondary)',
+                  fontSize: '0.95rem',
+                  lineHeight: 1.6,
+                  textAlign: 'center',
+                  maxWidth: '72ch',
+                  marginLeft: 'auto',
+                  marginRight: 'auto',
+                }}
+              >
+                <p style={{ margin: 0 }}>{predictionData.disclaimers?.[0]}</p>
               </footer>
             )}
           </div>
