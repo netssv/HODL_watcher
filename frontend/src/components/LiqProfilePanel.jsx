@@ -10,23 +10,62 @@ function heatColor(v) {
   return `rgba(244,67,54,${0.6 + v * 0.4})`;
 }
 
-function gauss(x, mu, sigma) {
-  return Math.exp(-0.5 * ((x - mu) / sigma) ** 2);
-}
-
-function buildBuckets(high, low, liq, currentPrice) {
+function buildBuckets(high, low, liqHeatmap) {
   const step = (high - low) / BUCKETS;
-  const sigma = currentPrice * 0.013;
-  const upperLiq = currentPrice * (1 + (liq.upper || 0.02));
-  const lowerLiq = currentPrice * (1 - Math.abs(liq.lower || 0.02));
 
-  return Array.from({ length: BUCKETS }, (_, i) => {
-    const price = high - (i + 0.5) * step;
-    const raw = gauss(price, upperLiq, sigma) * 0.75
-              + gauss(price, lowerLiq, sigma) * 0.75
-              + 0.05; // very subtle base floor
-    return { price, intensity: Math.min(1, raw) };
-  });
+  // Initialize frontend buckets matching the visible range
+  const buckets = Array.from({ length: BUCKETS }, (_, i) => ({
+    price: high - (i + 0.5) * step,
+    topEdge: high - i * step,
+    bottomEdge: high - (i + 1) * step,
+    rawNotional: 0,
+    smoothedNotional: 0,
+  }));
+
+  let hasRealData = false;
+
+  // Map backend OI heatmap buckets into our visible range buckets
+  if (liqHeatmap && (liqHeatmap.long_buckets?.length > 0 || liqHeatmap.short_buckets?.length > 0)) {
+    hasRealData = true;
+    const addNotional = (backendBuckets) => {
+      if (!backendBuckets) return;
+      backendBuckets.forEach(b => {
+        const p = b.price;
+        if (p <= high && p >= low) {
+          const idx = buckets.findIndex(fb => p <= fb.topEdge && p >= fb.bottomEdge);
+          if (idx !== -1) buckets[idx].rawNotional += b.notionalUSD;
+        }
+      });
+    };
+    addNotional(liqHeatmap.long_buckets);
+    addNotional(liqHeatmap.short_buckets);
+
+    // Apply a simple 1D Gaussian smoothing kernel across neighboring buckets
+    // Kernel roughly: [0.05, 0.25, 0.40, 0.25, 0.05]
+    const kernel = [0.0547, 0.2442, 0.4026, 0.2442, 0.0547];
+    const offset = Math.floor(kernel.length / 2);
+
+    for (let i = 0; i < BUCKETS; i++) {
+      let smoothed = 0;
+      for (let j = 0; j < kernel.length; j++) {
+        const targetIdx = i + j - offset;
+        if (targetIdx >= 0 && targetIdx < BUCKETS) {
+          smoothed += buckets[targetIdx].rawNotional * kernel[j];
+        }
+      }
+      buckets[i].smoothedNotional = smoothed;
+    }
+  }
+
+  let maxVol = 0;
+  buckets.forEach(b => { if (b.smoothedNotional > maxVol) maxVol = b.smoothedNotional; });
+
+  return buckets.map(b => ({
+    price: b.price,
+    intensity: maxVol > 0 ? b.smoothedNotional / maxVol : 0,
+    isReal: hasRealData,
+    volumeUSD: b.smoothedNotional, // Tooltip shows smoothed volume
+  }));
 }
 
 function fmt(p) {
@@ -34,17 +73,21 @@ function fmt(p) {
 }
 
 export function LiqProfilePanel({ predictionData, currentPrice, visibleRange }) {
-  const liq = predictionData?.market_snapshot?.liquidation_proximity;
-  if (!liq || !currentPrice) return null;
+  const [hoveredIdx, setHoveredIdx] = React.useState(null);
+
+  const snapshot = predictionData?.market_snapshot;
+  const liq = snapshot?.liquidation_proximity;
+  const heatmap = snapshot?.liq_heatmap;
+  if ((!liq && !heatmap) || !currentPrice) return null;
 
   // Sync to visible chart range; fallback while range hasn't resolved yet
   const high = visibleRange?.high ?? currentPrice * 1.06;
   const low  = visibleRange?.low  ?? currentPrice * 0.94;
   if (high <= low) return null;
 
-  const buckets = buildBuckets(high, low, liq, currentPrice);
-  const upperLiq = currentPrice * (1 + (liq.upper || 0.02));
-  const lowerLiq = currentPrice * (1 - Math.abs(liq.lower || 0.02));
+  const buckets = buildBuckets(high, low, heatmap);
+  const upperLiq = liq?.upper != null ? currentPrice * (1 + liq.upper) : null;
+  const lowerLiq = liq?.lower != null ? currentPrice * (1 - Math.abs(liq.lower)) : null;
   const tickPct  = (high - low) / currentPrice / BUCKETS;
 
   return (
@@ -64,27 +107,35 @@ export function LiqProfilePanel({ predictionData, currentPrice, visibleRange }) 
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         flexShrink: 0,
       }}>
-        <span>Liq Profile</span>
+        <span>OI Liq Estimate</span>
         <span style={{ color: '#fb923c', fontSize: '8px' }}>▲</span>
         <span style={{ color: '#10b981', fontSize: '8px' }}>▼</span>
       </div>
 
       {/* Rows — track visible price range */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {buckets.map(({ price, intensity }, i) => {
-          const isShortLiq = Math.abs(price - upperLiq) / currentPrice < tickPct * 1.5;
-          const isLongLiq  = Math.abs(price - lowerLiq) / currentPrice < tickPct * 1.5;
+        {buckets.map(({ price, intensity, isReal, volumeUSD }, i) => {
+          const isShortLiq = upperLiq != null && Math.abs(price - upperLiq) / currentPrice < tickPct * 1.5;
+          const isLongLiq  = lowerLiq != null && Math.abs(price - lowerLiq) / currentPrice < tickPct * 1.5;
           const isCurrent  = Math.abs(price - currentPrice) / currentPrice < tickPct * 1.5;
 
-          // Max bar width = 60%; avoids misleading "full" look
-          const barW = Math.max(3, Math.round(intensity * 60));
+          const isHovered = hoveredIdx === i;
+
+          // Max bar width expands on hover for dynamic effect
+          const barW = Math.max(isReal && volumeUSD === 0 ? 0 : 3, Math.round(intensity * (isHovered ? 85 : 60)));
           const color = heatColor(intensity);
 
           // Only label key levels + every 8th row to reduce noise
           const showLabel = isCurrent || isShortLiq || isLongLiq || i % 8 === 0;
+          const tooltipText = isReal
+            ? `$${(volumeUSD / 1_000_000).toFixed(2)}M estimated level notional`
+            : 'No Binance OI estimate in this price bucket';
 
           return (
-            <div key={i} style={{
+            <div key={i}
+              onMouseEnter={() => setHoveredIdx(i)}
+              onMouseLeave={() => setHoveredIdx(null)}
+              style={{
               flex: 1, display: 'flex', alignItems: 'center', position: 'relative',
               backgroundColor: isCurrent    ? 'rgba(255,255,255,0.06)'
                              : isShortLiq   ? 'rgba(249,115,22,0.06)'
@@ -93,14 +144,19 @@ export function LiqProfilePanel({ predictionData, currentPrice, visibleRange }) 
               borderTop:    isCurrent ? '1px solid rgba(255,255,255,0.22)' : undefined,
               borderBottom: isCurrent ? '1px solid rgba(255,255,255,0.22)' : undefined,
             }}>
-              <div style={{
-                position: 'absolute', left: 0, top: '1px', bottom: '1px',
-                width: `${barW}%`, background: color, borderRadius: '0 2px 2px 0',
+              <div
+                title={tooltipText}
+                style={{
+                  position: 'absolute', left: 0, top: '1px', bottom: '1px',
+                  width: `${barW}%`, background: color, borderRadius: '0 2px 2px 0',
+                  transition: 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s',
+                  filter: isHovered ? `brightness(1.3) drop-shadow(0 0 6px ${color})` : 'none',
+                  zIndex: isHovered ? 2 : 0,
               }} />
               {showLabel && (
                 <span style={{
                   position: 'absolute', right: '4px',
-                  fontSize: '7.5px', fontFamily: 'monospace',
+                  fontSize: '10.5px', fontFamily: 'monospace',
                   fontWeight: isCurrent ? 700 : isShortLiq || isLongLiq ? 600 : 400,
                   color: isCurrent  ? '#fff'
                        : isShortLiq ? '#fb923c'
@@ -121,6 +177,7 @@ export function LiqProfilePanel({ predictionData, currentPrice, visibleRange }) 
         padding: '3px 8px', borderTop: '1px solid rgba(255,255,255,0.06)',
         display: 'flex', justifyContent: 'space-between', flexShrink: 0,
       }}>
+        <span style={{ fontSize: '8px', color: 'rgba(255,255,255,0.42)' }}>Binance OI · estimated</span>
         <span style={{ fontSize: '8px', color: '#fb923c', fontWeight: 700 }}>⚡ Short</span>
         <span style={{ fontSize: '8px', color: '#10b981', fontWeight: 700 }}>Long ⚡</span>
       </div>

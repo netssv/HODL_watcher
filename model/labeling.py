@@ -24,16 +24,21 @@ def prepare_target(
     future_close = df["close"].shift(-horizon)
     price_change = (future_close - df["close"]) / df["close"]
 
-    target = pd.Series(0, index=df.index, dtype=int)
-
     if use_zscore and len(df) >= vol_window * 2:
-        # Realized vol over the last vol_window periods (backward-looking only)
-        realized_vol = price_change.rolling(vol_window, center=False, min_periods=max(1, vol_window // 2)).std()
-        realized_vol = realized_vol.replace(0, np.nan).ffill().fillna(price_change.std())
+        # Volatility must be known at row t: use historical close-to-close
+        # returns, never the future return used to create the label.
+        historical_return = df["close"].pct_change()
+        realized_vol = historical_return.rolling(
+            vol_window, center=False, min_periods=vol_window
+        ).std().replace(0, np.nan)
         z_return = price_change / realized_vol
-        target[z_return >  z_threshold] =  1
+        target = pd.Series(np.nan, index=df.index, dtype=float)
+        target[z_return > z_threshold] = 1
         target[z_return < -z_threshold] = -1
+        valid_mask = price_change.notna() & target.notna()
+        return df[valid_mask], target[valid_mask].astype(int)
     else:
+        target = pd.Series(0, index=df.index, dtype=int)
         target[price_change > threshold_pct] = 1
         target[price_change < -threshold_pct] = -1
 

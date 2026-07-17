@@ -17,60 +17,70 @@ def export_agent_payload(
     model_version: str = "1.0.0",
     news_sentiment_bullish_pct: float | None = None,
     macro_snapshot: Dict[str, Any] | None = None,
+    order_book_depth: Dict[str, Any] | None = None,
+    liq_heatmap: Dict[str, Any] | None = None,
+    data_freshness: Dict[str, str | None] | None = None,
+    data_gaps: List[str] | None = None,
 ) -> Dict[str, Any]:
     """
     Format predictions, metrics, and snapshots into the Phase 4 JSON Schema.
     """
     now_str = datetime.now(timezone.utc).isoformat()
     
-    # Extract latest market values safely
-    price = float(market_df.get('close', 0.0))
-    rsi_6 = float(market_df.get('rsi_6', 50.0))
-    rsi_12 = float(market_df.get('rsi_12', 50.0))
-    rsi_24 = float(market_df.get('rsi_24', 50.0))
-    
-    funding_val = float(market_df.get('funding_rate', 0.0))
-    funding_diff = float(market_df.get('funding_rate_diff_7', 0.0))
+    def _f(k, source=market_df):
+        v = source.get(k) if source is not None else None
+        return float(v) if v is not None and not pd.isna(v) else None
+
+    # Preserve missing provider values as null; defaults imply measurements.
+    price = _f('close')
+    rsi_6, rsi_12, rsi_24 = _f('rsi_6'), _f('rsi_12'), _f('rsi_24')
+    funding_val, funding_diff = _f('funding_rate'), _f('funding_rate_diff_7')
     funding_trend = "flat"
-    if funding_diff > 1e-5:
+    if funding_diff is not None and funding_diff > 1e-5:
         funding_trend = "rising"
-    elif funding_diff < -1e-5:
+    elif funding_diff is not None and funding_diff < -1e-5:
         funding_trend = "falling"
         
-    ls_val = float(market_df.get('long_short_ratio', 1.0))
-    ls_diff = float(market_df.get('long_short_ratio_diff_7', 0.0))
+    ls_val, ls_diff = _f('long_short_ratio'), _f('long_short_ratio_diff_7')
     ls_trend = "flat"
-    if ls_diff > 0.05:
+    if ls_diff is not None and ls_diff > 0.05:
         ls_trend = "rising"
-    elif ls_diff < -0.05:
+    elif ls_diff is not None and ls_diff < -0.05:
         ls_trend = "falling"
         
-    fear_greed = int(market_df.get('fear_greed', 50))
-    atr = float(market_df.get('atr', price * 0.02))
-    regime = float(market_df.get('market_regime', 0))
-    ob_imbalance = float(market_df.get('ob_imbalance_10', 0.0))
+    fear_greed = _f('fear_greed')
+    atr = _f('atr')
+    regime = _f('market_regime')
+    ob_imbalance = _f('ob_imbalance_10')
     
-    # Derivatives / on-chain metrics
-    liq_upper = float(market_df.get('liquidation_dist_upper', 0.0))
-    liq_lower = float(market_df.get('liquidation_dist_lower', 0.0))
-    dvol = float(market_df.get('dvol', 0.0))
-    skew_25d = float(market_df.get('skew_25d', 0.0))
-    put_call = float(market_df.get('put_call_ratio', 0.0))
-    exchange_flow = float(market_df.get('exchange_net_flow', 0.0))
-    etf_flow = float(market_df.get('etf_net_flow', 0.0))
+    # Optional provider metrics: preserve missing values instead of presenting zero as data.
+    liq_upper, liq_lower = _f('liquidation_dist_upper'), _f('liquidation_dist_lower')
+    dvol, skew_25d, put_call = _f('dvol'), _f('skew_25d'), _f('put_call_ratio')
+    exchange_flow, volume_proxy = _f('exchange_net_flow'), _f('etf_net_flow')
 
     # Hyperliquid DEX
-    hl_oi = float(market_df.get('hl_open_interest', 0.0))
-    hl_fund = float(market_df.get('hl_funding_rate', 0.0))
+    hl_oi = _f('hl_open_interest')
+    hl_fund = _f('hl_funding_rate')
 
     # FRED macro (passed in via macro_snapshot dict)
-    dxy_val = float((macro_snapshot or {}).get('dxy', 0.0))
-    fed_rate_val = float((macro_snapshot or {}).get('fed_rate', 0.0))
+    dxy_val = _f('dxy', macro_snapshot or {})
+    dxy_change = _f('dxy_change_pct', macro_snapshot or {})
+    fed_rate_val = _f('fed_rate', macro_snapshot or {})
+
+    def _json_value(value):
+        if value is None or (isinstance(value, float) and pd.isna(value)):
+            return None
+        if isinstance(value, pd.Timestamp):
+            return value.isoformat()
+        if hasattr(value, "item"):
+            return value.item()
+        return value
+
+    feature_snapshot = {
+        str(key): _json_value(value) for key, value in market_df.items()
+    }
     
     # Phase 1 local microstructure indicators
-    def _f(k):
-        v = market_df.get(k)
-        return float(v) if v is not None and not pd.isna(v) else None
     micro_dict = {
         "vwap_24h": _f("vwap_24"),
         "realized_volatility_24h": _f("realized_vol_24"),
@@ -81,7 +91,11 @@ def export_agent_payload(
     }
 
     # Feature disagreement logic
-    disagreement = (rsi_6 < 40 and ls_val < 0.9) or (rsi_6 > 60 and ls_val > 1.1) or regime == 0
+    disagreement = (
+        (rsi_6 is not None and ls_val is not None and rsi_6 < 40 and ls_val < 0.9)
+        or (rsi_6 is not None and ls_val is not None and rsi_6 > 60 and ls_val > 1.1)
+        or regime == 0
+    )
     
     # Confidence note based on validation performance & regime
     mean_acc, std_acc = validation_report["overall"]["mean_accuracy"], validation_report["overall"]["std_accuracy"]
@@ -96,21 +110,24 @@ def export_agent_payload(
         confidence_note = "CONFIDENCE MODERATE: Model consistently beats naive baselines."
         
     # Risk Management Module
-    sl_distance, tp_distance = 2 * atr, 3 * atr
-    notional_position_size = (price * 0.01) / sl_distance if sl_distance > 0 else 0
-    if notional_position_size > 5.0:
+    calc_price = price or 0.0
+    calc_atr = atr if atr is not None else None
+    sl_distance = 2 * calc_atr if calc_atr is not None else None
+    tp_distance = 3 * calc_atr if calc_atr is not None else None
+    notional_position_size = (calc_price * 0.01) / sl_distance if sl_distance and sl_distance > 0 else None
+    if notional_position_size is not None and notional_position_size > 5.0:
         notional_position_size = 5.0
-        actual_risk_pct = (sl_distance / price) * 5.0
+        actual_risk_pct = (sl_distance / calc_price) * 5.0 if calc_price else None
     else:
-        actual_risk_pct = 0.01
-    leverage = max(1.0, notional_position_size)
+        actual_risk_pct = 0.01 if notional_position_size is not None else None
+    leverage = max(1.0, notional_position_size) if notional_position_size is not None else None
         
     return {
         "meta": {
             "generated_at": now_str,
             "model_version": model_version,
             "horizon_hours": horizon_hours,
-            "data_freshness": {"price_last_update": now_str, "funding_last_update": now_str}
+            "data_freshness": data_freshness or {"price_last_update": None, "funding_last_update": None}
         },
         "market_snapshot": {
             "price": price,
@@ -118,12 +135,21 @@ def export_agent_payload(
             "funding_rate": {"value": funding_val, "trend": funding_trend},
             "long_short_ratio": {"value": ls_val, "trend": ls_trend},
             "fear_greed_index": fear_greed,
+            "feature_snapshot": feature_snapshot,
             "order_book_support_resistance": order_book_walls,
-            "liquidation_proximity": {"upper": liq_upper, "lower": liq_lower},
+            "order_book_depth": order_book_depth or {},
+            "liq_heatmap": liq_heatmap or {},
+            "liquidation_proximity": ({"upper": liq_upper, "lower": liq_lower}
+                                      if liq_upper is not None and liq_lower is not None else None),
             "deribit_options": {"dvol": dvol, "skew_25d": skew_25d, "put_call_ratio": put_call},
-            "onchain": {"exchange_net_flow": exchange_flow, "etf_net_flow": etf_flow},
+            "onchain": {"exchange_net_flow": exchange_flow, "btc_volume_proxy": volume_proxy},
             "hyperliquid": {"open_interest": hl_oi, "funding_rate": hl_fund},
-            "macro": {"dxy": dxy_val, "fed_rate": fed_rate_val},
+            "macro": {
+                "usd_index": dxy_val,
+                "usd_index_change_pct": dxy_change,
+                "usd_index_source": (macro_snapshot or {}).get("dxy_source"),
+                "fed_rate": fed_rate_val,
+            },
             "news_sentiment_bullish_pct": news_sentiment_bullish_pct,
             "market_microstructure": micro_dict
         },
@@ -138,19 +164,34 @@ def export_agent_payload(
         },
         "validation_summary": {
             "walk_forward_folds": validation_report["metadata"]["n_folds"],
+            "validation_status": validation_report["metadata"].get("status"),
+            "horizon_periods": validation_report["metadata"].get("horizon_periods"),
+            "embargo_periods": validation_report["metadata"].get("embargo_periods"),
+            "data_start": validation_report["metadata"].get("data_start"),
+            "data_end": validation_report["metadata"].get("data_end"),
+            "latest_test_end": validation_report["metadata"].get("latest_test_end"),
             "mean_accuracy": mean_acc,
             "std_accuracy": std_acc,
+            "mean_precision": validation_report["overall"].get("mean_precision"),
+            "std_precision": validation_report["overall"].get("std_precision"),
+            "mean_recall": validation_report["overall"].get("mean_recall"),
+            "std_recall": validation_report["overall"].get("std_recall"),
+            "mean_f1": validation_report["overall"].get("mean_f1"),
+            "std_f1": validation_report["overall"].get("std_f1"),
+            "mean_log_loss": validation_report["overall"].get("mean_log_loss"),
+            "std_log_loss": validation_report["overall"].get("std_log_loss"),
             "accuracy_vs_naive_baseline": baseline_comp,
+            "baselines": validation_report["overall"].get("baselines", {}),
             "class_balance": validation_report["overall"]["class_balance"],
             "trading_metrics": validation_report["overall"].get("trading", {}),
             "folds": validation_report.get("folds", [])
         },
         "risk_management": {
-            "position_size_notional_pct": notional_position_size * 100,
-            "actual_risk_pct": actual_risk_pct * 100,
+            "position_size_notional_pct": notional_position_size * 100 if notional_position_size is not None else None,
+            "actual_risk_pct": actual_risk_pct * 100 if actual_risk_pct is not None else None,
             "leverage": leverage,
-            "dynamic_sl_pct": (sl_distance / price) * 100 if price > 0 else 0,
-            "dynamic_tp_pct": (tp_distance / price) * 100 if price > 0 else 0,
+            "dynamic_sl_pct": (sl_distance / price) * 100 if sl_distance is not None and price else None,
+            "dynamic_tp_pct": (tp_distance / price) * 100 if tp_distance is not None and price else None,
             "market_regime": regime
         },
         "news_context": {
@@ -161,10 +202,17 @@ def export_agent_payload(
             ),
             "keywords_to_search": ["Bitcoin", "Fed rate decision", "CPI", "Inflation", "US Dollar Index"]
         },
+        "data_quality": {
+            "gaps": sorted(set(data_gaps or [])),
+            "macro_note": "usd_index is FRED DTWEXBGS, the Nominal Broad U.S. Dollar Index; it is not ICE DXY.",
+            "liquidation_note": (
+                "Estimated from Binance public open interest; not an exchange-published liquidation feed."
+                if liq_heatmap else "Unavailable: no Binance public OI liquidation estimate was returned."
+            ),
+        },
         "disclaimers": [
             "This is not financial advice.",
             f"The prediction model is validated using walk-forward splits showing a mean accuracy of {mean_acc:.1%} with a standard deviation of {std_acc:.1%}.",
             "All market indicators represent past data and cannot guarantee future performance."
         ]
     }
-

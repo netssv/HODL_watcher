@@ -5,9 +5,9 @@ A quantitative dashboard and honest strategy generator for BTC/USDT. It combines
 ## Core Features
 
 * Live Candlestick Chart: Real-time price actions, volatility bands, and indicators via Binance WebSocket.
-* Liquidation Heatmap: Multi-level leverage proximity bands mapping order book shelves directly on the chart.
+* Liquidation Profile: Gaussian-smoothed, explicitly estimated levels from Binance public USDⓈ-M open-interest history, candles, and long/short account ratios. Missing data produces empty bars, never synthetic volume.
 * Technical Overlays: Volume, EMAs, Bollinger Bands, RSI, and custom volume-weighted average price (VWAP) line.
-* Macro & Sentiment Ribbon: Live summaries for Fear & Greed index, News Tone sentiment distribution, DXY strength, and exchange flows. Includes hover tooltips detailing explanation definitions and concrete examples.
+* Macro & Sentiment Ribbon: Live summaries for Fear & Greed index, News Tone sentiment distribution, FRED's Nominal Broad USD Index, and exchange flows. The USD series is explicitly not ICE DXY. Includes hover tooltips detailing explanation definitions and concrete examples.
 * Honest Strategist Payload: Standardized API endpoints exporting clean market microstructure data directly to external strategy makers.
 
 ## Quick Start

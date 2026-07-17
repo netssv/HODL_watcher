@@ -18,7 +18,7 @@ export const getConnectorStatus = (name, gaps, error) => {
       return { label: 'Online', color: 'status-online' };
   }
   if (nameLower === 'etf_flows') {
-    if (gaps.some(g => g.includes('etf_flows: coingecko_proxy')))
+    if (gaps.some(g => g.includes('btc_volume_proxy: coingecko')))
       return { label: 'Proxy (CoinGecko)', color: 'status-warning' };
   }
 

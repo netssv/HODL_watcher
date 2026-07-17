@@ -33,7 +33,7 @@ class FeatureCalculateResponse(BaseModel):
 
 class TrainRequest(BaseModel):
     horizon_hours: int = Field(default=24, ge=1, le=168)
-    n_folds: int = Field(default=8, ge=5, le=15)
+    n_folds: int = Field(default=8, ge=8, le=15)
     threshold_pct: float = Field(default=0.005, ge=0.0, le=0.05)
     features_config: FeatureGroupConfig = FeatureGroupConfig()
 

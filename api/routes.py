@@ -12,12 +12,15 @@ from api.services import fetch_all_sources
 from data_ingestion import binance_spot
 from features.builder import build_features
 from model.validation import prepare_target, run_walk_forward_validation
+from model.inference import fit_final_model, predict_probabilities
 from model.agent_exporter import export_agent_payload
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
 
 _LATEST_TRAINING_REPORT: Optional[Dict[str, Any]] = None
+_LATEST_MODEL = None
+_LATEST_FEATURE_NAMES: list[str] = []
 _WARMING_UP = False
 
 def warmup_training():
@@ -52,7 +55,7 @@ def _build(sources: dict, cfg=None):
     )
 
 def _train(horizon: int, folds: int, threshold: float, cfg=None, limit=3000):
-    global _LATEST_TRAINING_REPORT
+    global _LATEST_TRAINING_REPORT, _LATEST_MODEL, _LATEST_FEATURE_NAMES
     srcs, gaps = fetch_all_sources(limit=limit, interval="1h")
     if srcs["spot_df"] is None or srcs["spot_df"].empty:
         raise HTTPException(status_code=400, detail="Binance Spot dataset missing.")
@@ -60,6 +63,7 @@ def _train(horizon: int, folds: int, threshold: float, cfg=None, limit=3000):
     if len(df) < 500:
         raise HTTPException(status_code=400, detail=f"Insufficient training samples ({len(df)}). Need ≥500.")
     _LATEST_TRAINING_REPORT = run_walk_forward_validation(df, target, folds, horizon)
+    _LATEST_MODEL, _LATEST_FEATURE_NAMES = fit_final_model(df, target)
     return _LATEST_TRAINING_REPORT, gaps
 
 
@@ -116,18 +120,17 @@ def get_indicators(symbol: str = "BTCUSDT", interval: str = "1h", limit: int = 2
 
 @router.get("/predict", response_model=PredictResponse)
 def get_prediction():
-    global _LATEST_TRAINING_REPORT
+    global _LATEST_TRAINING_REPORT, _LATEST_MODEL
     srcs, gaps = fetch_all_sources(limit=100, interval="1h")
     if srcs["spot_df"] is None or srcs["spot_df"].empty:
         raise HTTPException(status_code=503, detail="Spot market data unavailable.")
     
     latest_row = _build(srcs).iloc[-1].to_dict()
     
-    if _WARMING_UP or _LATEST_TRAINING_REPORT is None:
+    if _WARMING_UP or _LATEST_TRAINING_REPORT is None or _LATEST_MODEL is None:
         raise HTTPException(status_code=503, detail="Model warming up, retry in a moment.")
 
-    rsi, fg = latest_row.get("rsi_6", 50.0), latest_row.get("fear_greed", 50.0)
-    up, dn = 0.35 + 0.15*(fg/100) - 0.1*(rsi/100), 0.35 - 0.1*(fg/100) + 0.15*(rsi/100)
+    probabilities = predict_probabilities(_LATEST_MODEL, _LATEST_FEATURE_NAMES, latest_row)
     
     walls = []
     if srcs["order_book_df"] is not None and not srcs["order_book_df"].empty:
@@ -153,17 +156,39 @@ def get_prediction():
     macro_snap: dict = {}
     dxy_df = srcs.get("macro_dfs", {}).get("dxy")
     if dxy_df is not None and not dxy_df.empty:
-        macro_snap["dxy"] = float(dxy_df["value"].dropna().iloc[-1])
+        dxy_values = dxy_df["value"].dropna()
+        if not dxy_values.empty:
+            macro_snap["dxy"] = float(dxy_values.iloc[-1])
+            macro_snap["dxy_source"] = "FRED DTWEXBGS — Nominal Broad U.S. Dollar Index"
+            if len(dxy_values) > 1 and dxy_values.iloc[-2] != 0:
+                macro_snap["dxy_change_pct"] = float((dxy_values.iloc[-1] / dxy_values.iloc[-2]) - 1)
     fed_df = srcs.get("macro_dfs", {}).get("fed_funds")
     if fed_df is not None and not fed_df.empty:
         macro_snap["fed_rate"] = float(fed_df["value"].dropna().iloc[-1])
         
     payload = export_agent_payload(
         market_df=latest_row, validation_report=_LATEST_TRAINING_REPORT,
-        prediction_probs={"up": up, "down": dn, "sideways": 1 - up - dn},
+        prediction_probs=probabilities,
         order_book_walls=walls, horizon_hours=_LATEST_TRAINING_REPORT["metadata"]["horizon_periods"],
         news_sentiment_bullish_pct=news_bullish_pct,
         macro_snapshot=macro_snap or None,
+        order_book_depth=srcs.get("futures_depth_dict"),
+        liq_heatmap=srcs.get("liq_heatmap_dict"),
+        data_freshness={
+            "price_last_update": str(srcs["spot_df"].index[-1]),
+            "funding_last_update": (
+                str(srcs["funding_df"].index[-1])
+                if srcs.get("funding_df") is not None and not srcs["funding_df"].empty else None
+            ),
+            "liquidation_estimate_last_update": (
+                srcs["liq_heatmap_dict"].get("fetched_at")
+                if srcs.get("liq_heatmap_dict") else None
+            ),
+            "usd_index_last_update": (
+                str(dxy_df.index[-1]) if dxy_df is not None and not dxy_df.empty else None
+            ),
+        },
+        data_gaps=gaps,
     )
     payload["news"] = news_rows_out
     

@@ -18,6 +18,7 @@ from unittest.mock import patch, MagicMock
 
 import pandas as pd
 import pytest
+import requests
 
 
 # ---------------------------------------------------------------------------
@@ -416,6 +417,21 @@ class TestCacheBehavior:
         # Should re-fetch
         result2 = cached_fetch(test_key, ttl_seconds=0.1, fetch_fn=counting_fetch)
         assert call_count == 2, "fetch_fn was not called after TTL expired"
+
+    def test_cached_fetch_does_not_retry_client_errors(self, monkeypatch):
+        from data_ingestion.cache_utils import cached_fetch
+
+        calls = 0
+        def bad_request():
+            nonlocal calls
+            calls += 1
+            response = MagicMock(status_code=400)
+            raise requests.HTTPError("bad request", response=response)
+
+        monkeypatch.setattr("data_ingestion.cache_utils.time.sleep", lambda _: None)
+        with pytest.raises(requests.HTTPError):
+            cached_fetch(f"test_cache_400_{time.time()}", 60, bad_request)
+        assert calls == 1
 
 
 # ===================================================================

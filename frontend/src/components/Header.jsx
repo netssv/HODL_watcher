@@ -34,7 +34,9 @@ export function AppHeader({
   const fg = snapshot?.fear_greed_index;
   const newsPct = snapshot?.news_sentiment_bullish_pct;
   const fr = snapshot?.funding_rate?.value;
-  const dxy = snapshot?.macro?.dxy;
+  // Do not consume the legacy `macro.dxy` field: old payloads were mislabeled.
+  const usdIndex = snapshot?.macro?.usd_index;
+  const usdIndexChange = snapshot?.macro?.usd_index_change_pct;
   const flow = snapshot?.onchain?.exchange_net_flow;
   const isLowConf = predictionData?.model_prediction?.confidence_note?.includes("CONFIDENCE LOW");
 
@@ -123,32 +125,32 @@ export function AppHeader({
             </div>
           )}
 
-          {/* DXY Index */}
-          {dxy > 0 && (
+          {/* FRED broad USD index */}
+          {usdIndex != null && (
             <div className="header-card">
-              <span className="header-card-label">DXY (USD)</span>
-              <span className="header-card-value" style={{ color: dxy > 104 ? 'var(--down-color)' : 'var(--up-color)' }}>
-                {dxy.toFixed(2)}
+              <span className="header-card-label">Broad USD (FRED)</span>
+              <span className="header-card-value" style={{ color: usdIndexChange > 0 ? 'var(--down-color)' : usdIndexChange < 0 ? 'var(--up-color)' : 'var(--text-primary)' }}>
+                {usdIndex.toFixed(2)}
               </span>
               <div className="header-tooltip">
-                <span className="header-tooltip-title">US Dollar Index (DXY)</span>
-                <span className="header-tooltip-desc">Index measuring the strength of the US Dollar against a basket of foreign currencies.</span>
-                <span className="header-tooltip-example">Example: DXY rising above 104 is bearish for BTC as capital rotates into fiat cash.</span>
+                <span className="header-tooltip-title">Nominal Broad U.S. Dollar Index</span>
+                <span className="header-tooltip-desc">FRED DTWEXBGS: a real, daily, trade-weighted broad USD index. This is not the ICE DXY contract.</span>
+                <span className="header-tooltip-example">{usdIndexChange != null ? `Latest daily change: ${(usdIndexChange * 100).toFixed(2)}%` : 'Daily change unavailable.'}</span>
               </div>
             </div>
           )}
 
-          {/* WBTC Net Flow */}
-          {flow !== undefined && (
+          {/* Exchange flow is omitted when no real provider is available. */}
+          {flow != null && (
             <div className="header-card">
-              <span className="header-card-label">WBTC Inflow</span>
+              <span className="header-card-label">Exchange Flow</span>
               <span className="header-card-value" style={{ color: flow >= 0 ? 'var(--up-color)' : 'var(--down-color)' }}>
                 {flow >= 0 ? `+${flow.toFixed(1)}` : flow.toFixed(1)} BTC
               </span>
               <div className="header-tooltip">
-                <span className="header-tooltip-title">Wrapped BTC Net Flow</span>
-                <span className="header-tooltip-desc">Net quantity of Wrapped BTC deposited to or withdrawn from tracked exchange wallets.</span>
-                <span className="header-tooltip-example">Example: Positive (+) values show inflows which can sign potential selling pressure.</span>
+                <span className="header-tooltip-title">Exchange Net Flow</span>
+                <span className="header-tooltip-desc">BTC deposited to or withdrawn from tracked exchange wallets.</span>
+                <span className="header-tooltip-example">Positive values indicate inflows and can signal potential selling pressure.</span>
               </div>
             </div>
           )}

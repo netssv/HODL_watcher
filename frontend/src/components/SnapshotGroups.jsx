@@ -28,13 +28,13 @@ export function DerivativesGroup({ rsi, fr, ls, liq, opt, hl }) {
       />
       <IndicatorCard
         label="Liq. Proximity"
-        value={liq ? `+${(liq.upper * 100).toFixed(1)}% / -${(liq.lower * 100).toFixed(1)}%` : 'N/A'}
+        value={liq?.upper != null && liq?.lower != null ? `+${(liq.upper * 100).toFixed(1)}% / -${(liq.lower * 100).toFixed(1)}%` : 'N/A'}
         gloss={liq && liq.upper < 0.03 ? 'Tight upside — short squeeze risk' : 'Clusters at safe distance'}
         definition="Distance to forced-liquidation clusters above (+) and below (-) price."
       />
       <IndicatorCard
         label="IV / 25d Skew / P/C"
-        value={opt ? `${opt.dvol.toFixed(1)} / ${(opt.skew_25d * 100).toFixed(1)}% / ${opt.put_call_ratio.toFixed(2)}` : 'N/A'}
+        value={opt?.dvol != null ? `${opt.dvol.toFixed(1)} / ${opt.skew_25d != null ? `${(opt.skew_25d * 100).toFixed(1)}%` : 'N/A'} / ${opt.put_call_ratio != null ? opt.put_call_ratio.toFixed(2) : 'N/A'}` : 'N/A'}
         valueCls={opt?.skew_25d < -0.05 ? 'ind-value--down' : ''}
         gloss={opt ? (opt.skew_25d < -0.05 ? 'Puts pricier — hedging crash risk' : opt.put_call_ratio > 1 ? 'Net fear hedging' : 'Options calm') : ''}
         definition="IV = expected swing. 25d Skew = puts vs calls premium. P/C > 1 means fear."
@@ -55,18 +55,18 @@ export function OnChainGroup({ onchain }) {
       <IndicatorCard
         label="Exch. Net Flow"
         valueCls={onchain?.exchange_net_flow < 0 ? 'ind-value--up' : 'ind-value--down'}
-        value={onchain ? `${onchain.exchange_net_flow.toFixed(1)} BTC` : 'N/A'}
+        value={onchain?.exchange_net_flow != null ? `${onchain.exchange_net_flow.toFixed(1)} BTC` : 'No data'}
         trend={numTrend(onchain?.exchange_net_flow, 0, true)}
         gloss={onchain?.exchange_net_flow < 0 ? 'BTC leaving exchanges — holders accumulating' : 'BTC inflows — selling pressure possible'}
         definition="Negative = BTC moving to cold wallets. Positive = prepping for sale."
       />
       <IndicatorCard
-        label="ETF Net Flow"
-        valueCls={onchain?.etf_net_flow > 0 ? 'ind-value--up' : 'ind-value--down'}
-        value={onchain ? `$${onchain.etf_net_flow.toFixed(1)}M` : 'N/A'}
-        trend={numTrend(onchain?.etf_net_flow)}
-        gloss={onchain?.etf_net_flow > 0 ? 'Institutional buying' : 'ETF redemptions — institutional selling'}
-        definition="Dollar value flowing into/out of spot Bitcoin ETFs."
+        label="BTC Volume Proxy"
+        valueCls={onchain?.btc_volume_proxy > 0 ? 'ind-value--up' : 'ind-value--down'}
+        value={onchain?.btc_volume_proxy != null ? `$${onchain.btc_volume_proxy.toFixed(1)}M` : 'No data'}
+        trend={numTrend(onchain?.btc_volume_proxy)}
+        gloss="CoinGecko volume minus Binance spot volume; not ETF flow."
+        definition="A market-volume proxy, not a measure of ETF creations or redemptions."
       />
     </IndicatorGroup>
   );
@@ -97,11 +97,11 @@ export function MacroGroup({ macro }) {
   return (
     <IndicatorGroup title="Macro" cols="2">
       <IndicatorCard
-        label="DXY (US Dollar)"
-        valueCls={macro?.dxy > 104 ? 'ind-value--down' : macro?.dxy > 0 ? 'ind-value--up' : 'ind-value--na'}
-        value={macro?.dxy > 0 ? fmtNum(macro.dxy, 2) : 'No data'}
-        gloss={macro?.dxy > 104 ? 'Strong dollar — headwind for BTC' : macro?.dxy > 0 ? 'Dollar weakening — BTC tailwind' : 'FRED API key not configured'}
-        definition="US Dollar Index. DXY rise = headwind for BTC. DXY fall = tailwind."
+        label="Broad USD (FRED)"
+        valueCls={macro?.usd_index_change_pct > 0 ? 'ind-value--down' : macro?.usd_index_change_pct < 0 ? 'ind-value--up' : 'ind-value--na'}
+        value={macro?.usd_index != null ? `${fmtNum(macro.usd_index, 2)}${macro.usd_index_change_pct != null ? ` (${macro.usd_index_change_pct >= 0 ? '+' : ''}${(macro.usd_index_change_pct * 100).toFixed(2)}%)` : ''}` : 'No data'}
+        gloss={macro?.usd_index_change_pct > 0 ? 'Broad USD rising — BTC headwind' : macro?.usd_index_change_pct < 0 ? 'Broad USD falling — BTC tailwind' : 'Daily change unavailable'}
+        definition="FRED DTWEXBGS Nominal Broad U.S. Dollar Index. It is a broad trade-weighted USD measure, not ICE DXY."
       />
       <IndicatorCard
         label="Fed Funds Rate"

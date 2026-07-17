@@ -5,7 +5,7 @@ Endpoint:
   - GET https://api.stlouisfed.org/fred/series/observations
 
 Free with API key (register at https://fred.stlouisfed.org/docs/api/api_key.html).
-Used for macro context features (CPI, Fed Funds Rate, DXY proxy).
+Used for macro context features (CPI, Fed Funds Rate, broad USD index).
 
 These series update monthly/quarterly — cache TTL: 24 hours.
 """
@@ -27,7 +27,7 @@ BASE_URL = "https://api.stlouisfed.org/fred/series/observations"
 SERIES_IDS = {
     "cpi": "CPIAUCSL",           # Consumer Price Index (monthly)
     "fed_funds": "FEDFUNDS",     # Federal Funds Effective Rate (monthly)
-    "dxy": "DTWEXBGS",           # Trade Weighted US Dollar Index (daily-ish)
+    "dxy": "DTWEXBGS",           # Nominal Broad U.S. Dollar Index (not ICE DXY)
     "treasury_10y": "DGS10",     # 10-Year Treasury Constant Maturity Rate (daily)
 }
 
@@ -86,10 +86,15 @@ def get_series(
 
     cache_key = f"fred|{series_id}|{observation_start}|{observation_end}|{limit}"
 
+    def _fetch_json():
+        response = requests.get(BASE_URL, params=params, timeout=30)
+        response.raise_for_status()
+        return response.json()
+
     raw = cached_fetch(
         key=cache_key,
         ttl_seconds=24 * 3600,  # macro data updates monthly/quarterly
-        fetch_fn=lambda: requests.get(BASE_URL, params=params, timeout=30).json(),
+        fetch_fn=_fetch_json,
     )
 
     now_utc = datetime.now(timezone.utc)
@@ -141,7 +146,10 @@ def get_fed_funds_rate(**kwargs) -> pd.DataFrame:
 
 
 def get_dxy(**kwargs) -> pd.DataFrame:
-    """Shortcut: fetch Trade Weighted US Dollar Index (proxy for DXY, daily)."""
+    """Fetch FRED's Nominal Broad U.S. Dollar Index (DTWEXBGS, daily).
+
+    This is a broad trade-weighted USD index, not the ICE DXY contract.
+    """
     return get_series(SERIES_IDS["dxy"], **kwargs)
 
 

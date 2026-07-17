@@ -4,7 +4,6 @@ from data_ingestion import (
     coinalyze, deribit, onchain_metrics, etf_flows, news_currents,
     news_newsapi, hyperliquid
 )
-
 def fetch_all_sources(limit: int = 500, interval: str = "1h") -> Tuple[Dict[str, Any], List[str]]:
     """Helper that fetches datasets from all modules and flags gaps."""
     import pandas as pd
@@ -29,18 +28,15 @@ def fetch_all_sources(limit: int = 500, interval: str = "1h") -> Tuple[Dict[str,
                 break
             pages.append(page)
             remaining -= len(page)
-            # Walk backwards: next page ends just before earliest index
             earliest_ms = int(page.index.min().timestamp() * 1000) - 1
             end_time = earliest_ms
             if len(page) < page_limit:
-                break  # No more history available
+                break
         if not pages:
             return pd.DataFrame()
         combined = pd.concat(pages).sort_index()
         combined = combined[~combined.index.duplicated(keep='last')]
         return combined
-
-    # 1. Binance Spot
     try:
         spot_df = _paginate(
             lambda **kw: binance_spot.get_klines(symbol="BTCUSDT", interval=interval, **kw),
@@ -52,8 +48,6 @@ def fetch_all_sources(limit: int = 500, interval: str = "1h") -> Tuple[Dict[str,
     except Exception as e:
         spot_df = None
         data_gaps.append(f"binance_spot: {str(e)}")
-        
-    # 2. Binance Futures
     futures_df = None
     funding_df = None
     long_short_df = None
@@ -65,7 +59,6 @@ def fetch_all_sources(limit: int = 500, interval: str = "1h") -> Tuple[Dict[str,
         )
     except Exception as e:
         data_gaps.append(f"binance_futures_klines: {str(e)}")
-        
     try:
         funding_df = _paginate(
             lambda **kw: binance_futures.get_funding_rate(symbol="BTCUSDT", **kw),
@@ -74,7 +67,6 @@ def fetch_all_sources(limit: int = 500, interval: str = "1h") -> Tuple[Dict[str,
         )
     except Exception as e:
         data_gaps.append(f"binance_futures_funding: {str(e)}")
-        
     try:
         long_short_df = _paginate(
             lambda **kw: binance_futures.get_long_short_ratio(symbol="BTCUSDT", period=interval, **kw),
@@ -83,17 +75,13 @@ def fetch_all_sources(limit: int = 500, interval: str = "1h") -> Tuple[Dict[str,
         )
     except Exception as e:
         data_gaps.append(f"binance_futures_long_short: {str(e)}")
-
-    # 3. Fear & Greed
     fear_greed_df = None
     try:
         fear_greed_df = fear_greed.get_fear_greed_index(limit=min(limit, 1000))
     except Exception as e:
         data_gaps.append(f"fear_greed: {str(e)}")
-
-    # 4. FRED Macro
     macro_dfs = {}
-    from data_ingestion.config import FRED_API_KEY, COINALYZE_API_KEY, CURRENTS_API_KEY
+    from data_ingestion.config import FRED_API_KEY
     if not FRED_API_KEY:
         data_gaps.append("fred: missing_key")
     for name, fetch_fn in [("cpi", fred_macro.get_cpi), ("dxy", fred_macro.get_dxy), ("fed_funds", fred_macro.get_fed_funds_rate)]:
@@ -103,50 +91,54 @@ def fetch_all_sources(limit: int = 500, interval: str = "1h") -> Tuple[Dict[str,
                 macro_dfs[name] = m_df
         except Exception as e:
             data_gaps.append(f"fred_macro_{name}: {str(e)}")
-            
-    # 5. Order Book
     order_book_df = None
     try:
         order_book_df = binance_spot.get_order_book(symbol="BTCUSDT", limit=100)
     except Exception as e:
         data_gaps.append(f"binance_order_book: {str(e)}")
+    futures_depth_dict = None
+    try:
+        futures_depth_dict = binance_futures.get_orderbook_depth(symbol="BTCUSDT", limit=100)
+    except Exception as e:
+        data_gaps.append(f"binance_futures_depth: {str(e)}")
+    liq_heatmap_dict = None
+    try:
+        liq_heatmap_dict = binance_futures.get_liq_heatmap_data(symbol="BTCUSDT")
+        if not liq_heatmap_dict:
+            data_gaps.append("liq_heatmap: unavailable_from_binance_public_data")
+    except Exception as e:
+        data_gaps.append(f"liq_heatmap: {str(e)}")
 
-    # 6. Coinalyze, Deribit, Onchain, ETF
     coinalyze_df, deribit_df, onchain_df, etf_df = None, None, None, None
-    if not COINALYZE_API_KEY:
-        data_gaps.append("coinalyze: missing_key")
     try:
         coinalyze_df = coinalyze.get_coinalyze_data()
+        if coinalyze_df.empty:
+            data_gaps.append("open_interest: unavailable")
+        elif coinalyze_df.attrs.get("source") == "binance_futures":
+            data_gaps.append("coinalyze: binance_public_fallback")
     except Exception as e:
         data_gaps.append(f"coinalyze: {str(e)}")
-        
     try:
         deribit_df = deribit.get_options_data()
+        if deribit_df.empty:
+            data_gaps.append("deribit: unavailable")
     except Exception as e:
         data_gaps.append(f"deribit: {str(e)}")
-        
-    from data_ingestion.config import ETHERSCAN_API_KEY
-    if not ETHERSCAN_API_KEY:
-        data_gaps.append("onchain: missing_key")
     try:
         onchain_df = onchain_metrics.get_onchain_data()
+        if onchain_df.empty:
+            data_gaps.append("onchain_exchange_flows: unavailable")
     except Exception as e:
         data_gaps.append(f"onchain: {str(e)}")
-        
-    data_gaps.append("etf_flows: mock_data")
     try:
         etf_df = etf_flows.get_etf_flows()
         src = etf_df.attrs.get("source", "unknown")
         if src == "coingecko_proxy":
-            # Remove the pre-added mock_data tag and replace with proxy tag
-            data_gaps.remove("etf_flows: mock_data")
-            data_gaps.append("etf_flows: coingecko_proxy")
+            data_gaps.append("btc_volume_proxy: coingecko")
         elif src == "etf_empty":
-            data_gaps.remove("etf_flows: mock_data")
+            data_gaps.append("btc_volume_proxy: unavailable")
     except Exception as e:
         data_gaps.append(f"etf_flows: {str(e)}")
-
-
     news_df = None
     _BULL_WORDS = {"rally", "surge", "gain", "bullish", "rise", "up", "high",
                    "record", "breakout", "buy", "positive", "growth", "inflow",
@@ -176,7 +168,6 @@ def fetch_all_sources(limit: int = 500, interval: str = "1h") -> Tuple[Dict[str,
             raw = news_newsapi.search_news(query="Bitcoin OR BTC OR crypto", page_size=15)
             if raw is not None and not raw.empty:
                 raw["sentiment"] = raw["title"].apply(_tag_sentiment)
-                # align columns to match currents schema
                 news_df = raw[["title", "url", "source", "sentiment"]]
                 data_gaps.append("news: newsapi_fallback")
         except Exception as e:
@@ -190,7 +181,6 @@ def fetch_all_sources(limit: int = 500, interval: str = "1h") -> Tuple[Dict[str,
         hyperliquid_df = hyperliquid.get_hyperliquid_data()
     except Exception as e:
         data_gaps.append(f"hyperliquid: {str(e)}")
-
     sources = {
         "spot_df": spot_df,
         "futures_df": futures_df,
@@ -205,6 +195,7 @@ def fetch_all_sources(limit: int = 500, interval: str = "1h") -> Tuple[Dict[str,
         "etf_df": etf_df,
         "news_df": news_df,
         "hyperliquid_df": hyperliquid_df,
+        "futures_depth_dict": futures_depth_dict,
+        "liq_heatmap_dict": liq_heatmap_dict,
     }
-    
     return sources, data_gaps
