@@ -2,6 +2,18 @@
 
 A quantitative dashboard and honest strategy generator for BTC/USDT. It combines live market microstructure indicators, option metrics, macro data, and news sentiment with a Random Forest model to predict price trends and export formatted context payloads for downstream LLM trading agents.
 
+## API y comportamiento agentico
+
+La explicación completa de la API, endpoints, skills, integración agentica y
+uso consciente de IA está disponible en formato wiki:
+
+- [Documentación en español](docs/API_AGENT_ES.md)
+- [English documentation](docs/API_AGENT_EN.md)
+
+La API FastAPI genera además documentación interactiva en `/docs` y
+`/openapi.json`. En producción el frontend está en Vercel y el backend en
+Google Cloud Run.
+
 ## Core Features
 
 * Live Candlestick Chart: Real-time price actions, volatility bands, and indicators via Binance WebSocket.
