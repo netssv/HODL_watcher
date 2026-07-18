@@ -130,7 +130,12 @@ def calculate_features(req: FeatureCalculateRequest):
 
 @router.post("/train", response_model=TrainResponse)
 def train_model(req: TrainRequest):
-    rep, gaps = _train(req.horizon_hours, req.n_folds, req.threshold_pct, req.features_config, force_refresh=req.force_refresh)
+    requested_refresh = req.force_refresh
+    force_refresh = requested_refresh and os.getenv("ALLOW_ONLINE_FORCE_REFRESH", "false").lower() == "true"
+    online_server = bool(os.getenv("K_SERVICE")) or os.getenv("DEPLOYMENT_MODE", "offline").lower() == "online"
+    if requested_refresh and online_server and not force_refresh:
+        raise HTTPException(status_code=409, detail="Online refresh disabled: the shared server cache updates on its scheduled interval.")
+    rep, gaps = _train(req.horizon_hours, req.n_folds, req.threshold_pct, req.features_config, force_refresh=force_refresh)
     return TrainResponse(status="success", validation_summary=rep, data_gaps=gaps)
 
 
@@ -143,7 +148,10 @@ def get_indicators(symbol: str = "BTCUSDT", interval: str = "1h", limit: int = 2
     feat = _build(srcs)
     cols = ["vwap_24", "realized_vol_24", "volume_delta", "cvd_24", "futures_basis", "iv_rank"]
     records = []
-    for ts, row in feat[cols].dropna(how="all").tail(limit).iterrows():
+    # Optional providers can leave individual feature columns absent. Keep
+    # the endpoint usable and expose nulls instead of turning that gap into 500.
+    available = feat.reindex(columns=cols)
+    for ts, row in available.dropna(how="all").tail(limit).iterrows():
         entry = {"timestamp": str(ts)}
         for c in cols:
             v = row.get(c)

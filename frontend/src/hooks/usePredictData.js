@@ -142,6 +142,10 @@ export function usePredictData(playChime) {
   // Train model
   const handleTrain = async () => {
     if (cooldownRemaining > 0 || trainLoading) return;
+    if (ONLINE_MODE) {
+      setRefreshNotice('Online mode: calibration is simulated. The shared Cloud Run model refreshes on its server schedule; upstream APIs are not refreshed from the browser.');
+      return;
+    }
     setShowTrainModal(true);
     setTrainLoading(true); setError(null);
     try {
