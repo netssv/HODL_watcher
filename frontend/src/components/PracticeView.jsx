@@ -5,7 +5,7 @@ import { usePracticeSession } from '../hooks/usePracticeSession.js';
 import { calcVWAP } from '../utils/chartMath';
 
 const API = 'https://api.binance.com/api/v3/klines';
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:8000' : '');
 const parse = raw => raw.map(x => ({ time: Math.floor(x[0] / 1000), open: +x[1], high: +x[2], low: +x[3], close: +x[4], volume: +x[5] }));
 const SCENARIOS = { day: { label: 'Daily · 1 day', days: 1 }, short: { label: 'Short · 3 days', days: 3 }, medium: { label: 'Medium · 7 days', days: 7 }, month: { label: 'Month · 30 days', days: 30 } };
 const TIMEFRAMES = { '15m': 'Scalping · 15m', '1h': '1 hour', '4h': '4 hours', '1d': '1 day' };

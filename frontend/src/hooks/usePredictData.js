@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { deriveStrategy } from '../utils.jsx';
 
-const API = import.meta.env.VITE_API_BASE_URL || '';
+const API = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:8000' : '');
 const ONLINE_MODE = import.meta.env.VITE_DEPLOYMENT_MODE === 'online';
 const THROTTLE_MS = 5000;
 const CALIBRATION_CACHE_MS = 6 * 60 * 60 * 1000;
