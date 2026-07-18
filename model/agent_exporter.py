@@ -21,6 +21,7 @@ def export_agent_payload(
     liq_heatmap: Dict[str, Any] | None = None,
     data_freshness: Dict[str, str | None] | None = None,
     data_gaps: List[str] | None = None,
+    network_snapshot: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     """
     Format predictions, metrics, and snapshots into the Phase 4 JSON Schema.
@@ -100,8 +101,10 @@ def export_agent_payload(
     # Confidence note based on validation performance & regime
     mean_acc, std_acc = validation_report["overall"]["mean_accuracy"], validation_report["overall"]["std_accuracy"]
     baseline_comp = validation_report["overall"]["accuracy_vs_naive_baseline"]
-    if baseline_comp == "worse" or mean_acc < 0.4:
-        confidence_note = f"CONFIDENCE LOW: Accuracy ({mean_acc:.1%}) underperforms baseline."
+    trading_metrics = validation_report["overall"].get("trading", {})
+    mean_sharpe = trading_metrics.get("mean_sharpe")
+    if baseline_comp != "better" or mean_acc < 0.4 or (mean_sharpe is not None and mean_sharpe < 0):
+        confidence_note = f"CONFIDENCE LOW: Validation has no reliable edge (accuracy {mean_acc:.1%}, baseline {baseline_comp}, mean Sharpe {mean_sharpe if mean_sharpe is not None else 'N/A'})."
     elif disagreement:
         confidence_note = "CONFIDENCE LOW: High feature disagreement or volatile market regime."
     elif std_acc > 0.1:
@@ -121,6 +124,16 @@ def export_agent_payload(
     else:
         actual_risk_pct = 0.01 if notional_position_size is not None else None
     leverage = max(1.0, notional_position_size) if notional_position_size is not None else None
+
+    # Hard safety gate: directional probability must never override a failed
+    # validation/reward check. Keep the raw forecast above for auditability,
+    # but expose zero executable sizing to downstream strategy agents.
+    risk_gate = "allowed"
+    if "CONFIDENCE LOW" in confidence_note:
+        notional_position_size = 0.0
+        actual_risk_pct = 0.0
+        leverage = 0.0
+        risk_gate = "blocked_low_confidence"
         
     return {
         "meta": {
@@ -143,12 +156,15 @@ def export_agent_payload(
                                       if liq_upper is not None and liq_lower is not None else None),
             "deribit_options": {"dvol": dvol, "skew_25d": skew_25d, "put_call_ratio": put_call},
             "onchain": {"exchange_net_flow": exchange_flow, "btc_volume_proxy": volume_proxy},
+            "bitcoin_network": network_snapshot or {},
             "hyperliquid": {"open_interest": hl_oi, "funding_rate": hl_fund},
             "macro": {
                 "usd_index": dxy_val,
                 "usd_index_change_pct": dxy_change,
                 "usd_index_source": (macro_snapshot or {}).get("dxy_source"),
+                "macro_dxy_source": (macro_snapshot or {}).get("macro_dxy_source"),
                 "fed_rate": fed_rate_val,
+                "macro_dxy_source": (macro_snapshot or {}).get("macro_dxy_source"),
             },
             "news_sentiment_bullish_pct": news_sentiment_bullish_pct,
             "market_microstructure": micro_dict
@@ -192,7 +208,8 @@ def export_agent_payload(
             "leverage": leverage,
             "dynamic_sl_pct": (sl_distance / price) * 100 if sl_distance is not None and price else None,
             "dynamic_tp_pct": (tp_distance / price) * 100 if tp_distance is not None and price else None,
-            "market_regime": regime
+            "market_regime": regime,
+            "gate": risk_gate
         },
         "news_context": {
             "instructions_for_agent": (
@@ -204,7 +221,7 @@ def export_agent_payload(
         },
         "data_quality": {
             "gaps": sorted(set(data_gaps or [])),
-            "macro_note": "usd_index is FRED DTWEXBGS, the Nominal Broad U.S. Dollar Index; it is not ICE DXY.",
+            "macro_note": "usd_index is ICE DXY (DX-Y.NYB), sourced through Yahoo Finance; quote data may be delayed.",
             "liquidation_note": (
                 "Estimated from Binance public open interest; not an exchange-published liquidation feed."
                 if liq_heatmap else "Unavailable: no Binance public OI liquidation estimate was returned."

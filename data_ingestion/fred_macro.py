@@ -129,6 +129,7 @@ def get_series(
     df.attrs.update(
         source="fred",
         series_id=series_id,
+        **({"macro_dxy_source": "fred_dtwexbgs"} if series_id == "DTWEXBGS" else {}),
         fetched_at=now_utc.isoformat(),
         missing_count=int(n_missing),
     )

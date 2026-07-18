@@ -1,9 +1,9 @@
 /* ── 21. CANDLESTICK CHART SHELL ── */
-.chart-shell { margin-top: 1rem; border: 1px solid var(--border-color); border-radius: 2px; background: #0a0d12; overflow: hidden; animation: border-shimmer 4s ease infinite; }
+.chart-shell { margin-top: 1rem; border: 1px solid #242a32; border-radius: 10px; background: #0a0d12; overflow: hidden; animation: none; }
 .simple-mode .chart-shell { background: #ffffff; animation: none; border-color: #e2e8f0; }
 
 /* ── 21a. CHART CONTROLS ── */
-.chart-controls { display: flex; flex-direction: column; border-bottom: 1px solid var(--border-color); background: rgba(0,0,0,0.25); flex-shrink: 0; }
+.chart-controls { display: flex; flex-direction: column; border-bottom: 1px solid #242a32; background: #10151b; flex-shrink: 0; }
 .chart-controls__row { display: flex; align-items: center; gap: 0.3rem; padding: 0.38rem 0.75rem; flex-wrap: wrap; }
 .chart-controls__row--tf { border-bottom: 1px solid rgba(255,255,255,0.04); }
 .chart-controls__label { font-size: 0.96rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); font-family: var(--text-mono); }
@@ -18,7 +18,7 @@
 .indicator-pill--active { font-weight: 700; }
 
 /* ── 21b. OHLC HEADER BAR ── */
-.ohlc-bar { display: flex; align-items: center; gap: 1rem; padding: 0.45rem 0.75rem; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border-color); font-family: var(--text-mono); font-size: 0.87rem; flex-wrap: wrap; min-height: 30px; }
+.ohlc-bar { display: flex; align-items: center; gap: 1rem; padding: 0.45rem 0.75rem; background: #10151b; border-bottom: 1px solid #242a32; font-family: var(--text-mono); font-size: 0.87rem; flex-wrap: wrap; min-height: 30px; }
 .simple-mode .ohlc-bar { background: #f8fafc; border-color: #e2e8f0; }
 .ohlc-pair { font-weight: 700; font-size: 0.9rem; color: var(--text-primary); }
 .ohlc-price { font-size: 1rem; font-weight: 700; animation: ticker-flash 0.3s ease; }
@@ -58,7 +58,7 @@
 .live-dot { width: 6px; height: 6px; border-radius: 50%; background: #10b981; animation: pulse-dot 2s ease-in-out infinite; box-shadow: 0 0 6px rgba(16,185,129,0.6); }
 
 /* ── 22. RECALIBRATE, TRAIN & UTILS ── */
-.btn-recalibrate { width: 100%; margin-top: 0.5rem; padding: 0.65rem; font-size: 0.9rem; font-weight: 700; background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%); color: #fff; border: none; cursor: pointer; border-radius: 2px; transition: all 0.2s; }
+.btn-recalibrate { width: 100%; margin-top: 0.5rem; padding: 0.65rem; font-size: 0.9rem; font-weight: 700; background: var(--accent-brand); color: #fff; border: none; cursor: pointer; border-radius: 8px; transition: all 0.2s; }
 .btn-recalibrate:hover { box-shadow: 0 0 20px var(--accent-glow); transform: translateY(-1px); }
 .btn-recalibrate:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 .train-progress { height: 2px; width: 100%; background: rgba(59,130,246,0.1); margin-top: 0.5rem; overflow: hidden; }

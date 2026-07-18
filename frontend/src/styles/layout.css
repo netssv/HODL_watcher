@@ -37,21 +37,34 @@
   width: 36px; height: 36px; transition: all 0.2s ease;
 }
 .sidebar-icon-btn:hover { background: rgba(255, 255, 255, 0.1); color: var(--text-primary); }
+.sidebar-collapse-btn {
+  position: absolute; top: 0.45rem; right: -0.25rem; z-index: 2;
+  width: 32px; height: 32px; padding: 0; opacity: 0;
+  transition: opacity 0.18s ease, color 0.18s ease;
+}
+.sidebar:hover .sidebar-collapse-btn,
+.sidebar-collapse-btn:focus-visible { opacity: 1; }
 
 /* ── 6. HEADER ── */
 .header { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); gap: 0.75rem; position: relative; }
 @media (min-width: 640px) { .header { flex-direction: row; align-items: center; } }
 .header-title h1 {
-  font-family: 'Outfit', sans-serif; font-size: 1.45rem; font-weight: 800; margin: 0; letter-spacing: -0.02em;
-  background: linear-gradient(135deg, #f0f4f8 0%, #8b96a7 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  font-family: 'DM Sans', sans-serif; font-size: 1.55rem; font-weight: 700; margin: 0; letter-spacing: -0.03em;
+  color: var(--text-primary);
 }
 .simple-mode .header-title h1 { background: linear-gradient(135deg, #0f172a 0%, #2563eb 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 .header-title p { color: var(--text-secondary); font-size: 0.9rem; margin: 0.15rem 0 0 0; font-family: var(--text-mono); letter-spacing: 0.02em; }
-.header-buttons { display: flex; gap: 0.5rem; align-items: center; }
+.header-buttons { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
+.header-buttons > .btn { white-space: nowrap; }
+.mode-switch { flex: 0 0 auto; }
+@media (max-width: 639px) {
+  .header-buttons { width: 100%; justify-content: flex-start; }
+  .header-buttons > .btn { flex: 1 1 auto; justify-content: center; }
+}
 
 /* ── 7. BUTTONS ── */
 .btn {
-  display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.9rem; border-radius: 3px;
+  display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 0.9rem; border-radius: 8px;
   font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.18s ease; border: 1px solid transparent;
   letter-spacing: 0.01em; position: relative; overflow: hidden;
 }
@@ -59,16 +72,16 @@
 .btn-primary { background: var(--accent-brand); color: #ffffff; border-color: var(--accent-brand); }
 .btn-primary:hover { background: var(--accent-brand-hover); box-shadow: 0 0 16px var(--accent-glow); }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-secondary { background: rgba(255,255,255,0.04); color: var(--text-primary); border-color: var(--border-color); }
-.btn-secondary:hover { background: rgba(255,255,255,0.08); border-color: var(--border-color-hover); }
+.btn-secondary { background: var(--bg-card); color: var(--text-primary); border-color: var(--border-color); }
+.btn-secondary:hover { background: var(--bg-card-hover); border-color: var(--border-color-hover); }
 .simple-mode .btn-secondary { background: #fff; color: #0f172a; border-color: #d1d5db; }
 .simple-mode .btn-secondary:hover { background: #f8fafc; border-color: #94a3b8; }
 
 /* ── 8. CARDS ── */
 .card {
   background: var(--bg-card); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border-color); border-radius: 3px; padding: 1.25rem;
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.03) inset, 0 8px 24px rgba(0,0,0,0.25);
+  border: 1px solid var(--border-color); border-radius: 12px; padding: 1.25rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
   transition: border-color 0.25s, box-shadow 0.25s; animation: float-up-in 0.35s ease both;
 }
 .card:hover { border-color: var(--border-color-hover); }

@@ -20,6 +20,12 @@ logger = logging.getLogger(__name__)
 
 BASE_URL = "https://api.binance.com"
 
+
+def _request_json(url: str, **kwargs):
+    response = requests.get(url, **kwargs)
+    response.raise_for_status()
+    return response.json()
+
 # Interval string → seconds, used both for cache TTL and gap detection
 INTERVAL_SECONDS: dict[str, int] = {
     "15m": 900,
@@ -85,9 +91,7 @@ def get_klines(
     raw = cached_fetch(
         key=cache_key,
         ttl_seconds=ttl,
-        fetch_fn=lambda: requests.get(
-            f"{BASE_URL}/api/v3/klines", params=params, timeout=30
-        ).json(),
+        fetch_fn=lambda: _request_json(f"{BASE_URL}/api/v3/klines", params=params, timeout=30),
     )
 
     now_utc = datetime.now(timezone.utc)
@@ -160,11 +164,9 @@ def get_order_book(
     raw = cached_fetch(
         key=cache_key,
         ttl_seconds=60,  # order book is highly dynamic, short TTL
-        fetch_fn=lambda: requests.get(
-            f"{BASE_URL}/api/v3/depth",
-            params={"symbol": symbol, "limit": limit},
-            timeout=30,
-        ).json(),
+        fetch_fn=lambda: _request_json(
+            f"{BASE_URL}/api/v3/depth", params={"symbol": symbol, "limit": limit}, timeout=30
+        ),
     )
 
     rows: list[dict] = []

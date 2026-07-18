@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import '../styles/indicators.css';
-import { DerivativesGroup, OnChainGroup, SentimentGroup, MacroGroup } from './SnapshotGroups.jsx';
+import { DerivativesGroup, NetworkGroup, SentimentGroup, MacroGroup } from './SnapshotGroups.jsx';
 import { MicrostructureGroup } from './MicrostructureGroup.jsx';
 
 const POLL_MS = 120_000; // 2-minute refresh for microstructure data
@@ -37,7 +37,7 @@ export function AdvancedIndicators({ snapshot }) {
   const {
     rsi, funding_rate: fr, long_short_ratio: ls,
     liquidation_proximity: liq, deribit_options: opt,
-    onchain, hyperliquid: hl, macro,
+    bitcoin_network: network, hyperliquid: hl, macro,
     news_sentiment_bullish_pct: newsPct, fear_greed_index: fg,
     market_regime,
   } = snapshot;
@@ -59,7 +59,7 @@ export function AdvancedIndicators({ snapshot }) {
 
       {/* Snapshot-based groups */}
       <DerivativesGroup rsi={rsi} fr={fr} ls={ls} liq={liq} opt={opt} hl={hl} />
-      <OnChainGroup onchain={onchain} />
+      <NetworkGroup network={network} />
       <SentimentGroup fg={fg} newsPct={newsPct} />
       <MacroGroup macro={macro} />
 

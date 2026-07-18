@@ -15,9 +15,14 @@ API_URL = "https://www.deribit.com/api/v2/public/"
 def get_options_data() -> pd.DataFrame:
     """Fetch real DVOL history and the current put/call volume ratio."""
     def fetch_data():
+        end_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
         dvol = requests.get(
             f"{API_URL}get_volatility_index_data",
-            params={"currency": "BTC", "resolution": "3600"}, timeout=10,
+            params={
+                "currency": "BTC", "resolution": "3600",
+                "start_timestamp": end_ms - 7 * 24 * 3600 * 1000,
+                "end_timestamp": end_ms,
+            }, timeout=10,
         )
         book = requests.get(
             f"{API_URL}get_book_summary_by_currency",

@@ -10,14 +10,14 @@ import {
 import { LiqProfilePanel } from './LiqProfilePanel';
 
 // ── Chart Controls ────────────────────────────────────────────────────────────
-export function ChartControls({ timeframe, setTF, activeEMAs, toggleEMA, showBB, setBB, showRSI, setRSI, showVWAP, setVWAP, showLiqMap, setLiqMap, showPredLines, setPredLines, loading, err, loadingMore, rangePreset, setRangePreset }) {
+export function ChartControls({ timeframe, setTF, activeEMAs, toggleEMA, showBB, setBB, showRSI, setRSI, showVWAP, setVWAP, showLiqMap, setLiqMap, showPredLines, setPredLines, showTrendLines, setTrendLines, loading, err, loadingMore, rangePreset, setRangePreset }) {
   return (
     <div className="chart-controls">
       {/* Row 1 — timeframe + LIVE badge */}
       <div className="chart-controls__row chart-controls__row--tf">
         <span className="chart-controls__label">Timeframe</span>
         <div className="chart-controls__group">
-          {['1h', '4h', '1d', '1w'].map(tf => (
+          {['1h', '4h', '1d', '1w', '1M'].map(tf => (
             <button
               key={tf}
               onClick={() => setTF(tf)}
@@ -70,6 +70,7 @@ export function ChartControls({ timeframe, setTF, activeEMAs, toggleEMA, showBB,
           <IndPill active={showVWAP}      onClick={() => setVWAP(v => !v)}       title="Volume Weighted Average Price" accent="#38bdf8">VWAP</IndPill>
           <IndPill active={showRSI}       onClick={() => setRSI(r => !r)}        title="RSI (14) sub-panel"        accent="#818cf8">RSI</IndPill>
           <IndPill active={showPredLines} onClick={() => setPredLines(p => !p)}  title="Prediction ±% lines"      accent="rgba(16,185,129,0.9)">PRED</IndPill>
+          <IndPill active={showTrendLines} onClick={() => setTrendLines(p => !p)} title="Automatic support and resistance trendlines" accent="rgba(198,93,75,0.9)">TREND</IndPill>
           <IndPill active={showLiqMap}    onClick={() => setLiqMap(l => !l)}     title="Liquidation Heatmap"      accent="rgba(251,191,36,0.9)">LIQ</IndPill>
         </div>
       </div>

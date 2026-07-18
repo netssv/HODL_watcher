@@ -35,6 +35,16 @@ def _get_conn() -> sqlite3.Connection:
     return conn
 
 
+def clear_response_cache() -> None:
+    """Clear cached API responses while preserving quota counters."""
+    conn = _get_conn()
+    try:
+        conn.execute("DELETE FROM cache")
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def cached_fetch(key: str, ttl_seconds: float, fetch_fn: Callable[[], Any]) -> Any:
     """
     Return cached value for ``key`` if fresher than *ttl_seconds*, otherwise

@@ -9,7 +9,7 @@ from api.schemas import (
     PredictResponse, NewsInstructionsResponse, IndicatorsResponse
 )
 from api.services import fetch_all_sources
-from data_ingestion import binance_spot
+from data_ingestion import binance_spot, okx, kraken, bybit
 from features.builder import build_features
 from model.validation import prepare_target, run_walk_forward_validation
 from model.inference import fit_final_model, predict_probabilities
@@ -54,9 +54,9 @@ def _build(sources: dict, cfg=None):
         hyperliquid_df=sources.get("hyperliquid_df")
     )
 
-def _train(horizon: int, folds: int, threshold: float, cfg=None, limit=3000):
+def _train(horizon: int, folds: int, threshold: float, cfg=None, limit=3000, force_refresh=False):
     global _LATEST_TRAINING_REPORT, _LATEST_MODEL, _LATEST_FEATURE_NAMES
-    srcs, gaps = fetch_all_sources(limit=limit, interval="1h")
+    srcs, gaps = fetch_all_sources(limit=limit, interval="1h", force_refresh=force_refresh)
     if srcs["spot_df"] is None or srcs["spot_df"].empty:
         raise HTTPException(status_code=400, detail="Binance Spot dataset missing.")
     df, target = prepare_target(_build(srcs, cfg), horizon=horizon, threshold_pct=threshold)
@@ -72,8 +72,31 @@ def get_raw_data(symbol: str, interval: str = "1h", limit: int = 100):
     data_gaps = []
     try:
         df = binance_spot.get_klines(symbol=symbol, interval=interval, limit=limit)
+        if df is None or df.empty:
+            raise RuntimeError("Empty response returned")
     except Exception as e:
-        df, data_gaps = None, [f"data_fetch_failed: {e}"]
+        data_gaps = [f"binance_spot: {e}; trying OKX fallback"]
+        try:
+            df = okx.get_klines(symbol=symbol, interval=interval, limit=limit)
+            if df is None or df.empty:
+                raise RuntimeError("Empty response returned")
+            data_gaps.append("spot_source: okx_fallback")
+        except Exception as okx_error:
+            data_gaps.append(f"okx_spot: {okx_error}; trying Kraken fallback")
+            try:
+                df = kraken.get_klines(symbol=symbol, interval=interval, limit=limit)
+                if df is None or df.empty:
+                    raise RuntimeError("Empty response returned")
+                data_gaps.append("spot_source: kraken_fallback")
+            except Exception as kraken_error:
+                data_gaps.append(f"kraken_spot: {kraken_error}; trying Bybit fallback")
+                try:
+                    df = bybit.get_klines(symbol=symbol, interval=interval, limit=limit)
+                    if df is None or df.empty:
+                        raise RuntimeError("Empty response returned")
+                    data_gaps.append("spot_source: bybit_fallback")
+                except Exception as bybit_error:
+                    df, data_gaps = None, data_gaps + [f"bybit_spot: {bybit_error}"]
         
     if df is None or df.empty:
         return DataResponse(symbol=symbol, interval=interval, data=[], data_gaps=data_gaps)
@@ -96,7 +119,7 @@ def calculate_features(req: FeatureCalculateRequest):
 
 @router.post("/train", response_model=TrainResponse)
 def train_model(req: TrainRequest):
-    rep, gaps = _train(req.horizon_hours, req.n_folds, req.threshold_pct, req.features_config)
+    rep, gaps = _train(req.horizon_hours, req.n_folds, req.threshold_pct, req.features_config, force_refresh=req.force_refresh)
     return TrainResponse(status="success", validation_summary=rep, data_gaps=gaps)
 
 
@@ -119,13 +142,16 @@ def get_indicators(symbol: str = "BTCUSDT", interval: str = "1h", limit: int = 2
 
 
 @router.get("/predict", response_model=PredictResponse)
-def get_prediction():
+def get_prediction(force_refresh: bool = False):
     global _LATEST_TRAINING_REPORT, _LATEST_MODEL
-    srcs, gaps = fetch_all_sources(limit=100, interval="1h")
+    srcs, gaps = fetch_all_sources(limit=100, interval="1h", force_refresh=force_refresh)
     if srcs["spot_df"] is None or srcs["spot_df"].empty:
         raise HTTPException(status_code=503, detail="Spot market data unavailable.")
     
     latest_row = _build(srcs).iloc[-1].to_dict()
+    if any(latest_row.get(field) is None or pd.isna(latest_row.get(field))
+           for field in ("liquidation_dist_upper", "liquidation_dist_lower")):
+        gaps.append("liquidation_proximity: unavailable")
     
     if _WARMING_UP or _LATEST_TRAINING_REPORT is None or _LATEST_MODEL is None:
         raise HTTPException(status_code=503, detail="Model warming up, retry in a moment.")
@@ -159,7 +185,10 @@ def get_prediction():
         dxy_values = dxy_df["value"].dropna()
         if not dxy_values.empty:
             macro_snap["dxy"] = float(dxy_values.iloc[-1])
-            macro_snap["dxy_source"] = "FRED DTWEXBGS — Nominal Broad U.S. Dollar Index"
+            macro_snap["dxy_source"] = "ICE U.S. Dollar Index (DXY), Yahoo Finance DX-Y.NYB"
+            macro_snap["macro_dxy_source"] = dxy_df.attrs.get(
+                "macro_dxy_source", "unknown"
+            )
             if len(dxy_values) > 1 and dxy_values.iloc[-2] != 0:
                 macro_snap["dxy_change_pct"] = float((dxy_values.iloc[-1] / dxy_values.iloc[-2]) - 1)
     fed_df = srcs.get("macro_dfs", {}).get("fed_funds")
@@ -189,6 +218,7 @@ def get_prediction():
             ),
         },
         data_gaps=gaps,
+        network_snapshot=srcs.get("network_snapshot"),
     )
     payload["news"] = news_rows_out
     

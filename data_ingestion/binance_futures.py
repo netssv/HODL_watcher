@@ -22,6 +22,12 @@ logger = logging.getLogger(__name__)
 
 BASE_URL = "https://fapi.binance.com"
 
+
+def _request_json(url: str, **kwargs):
+    response = requests.get(url, **kwargs)
+    response.raise_for_status()
+    return response.json()
+
 INTERVAL_SECONDS: dict[str, int] = {
     "15m": 900,
     "1h": 3600,
@@ -69,9 +75,7 @@ def get_klines(
     raw = cached_fetch(
         key=cache_key,
         ttl_seconds=ttl,
-        fetch_fn=lambda: requests.get(
-            f"{BASE_URL}/fapi/v1/klines", params=params, timeout=30
-        ).json(),
+        fetch_fn=lambda: _request_json(f"{BASE_URL}/fapi/v1/klines", params=params, timeout=30),
     )
 
     now_utc = datetime.now(timezone.utc)
@@ -142,9 +146,7 @@ def get_funding_rate(
     raw = cached_fetch(
         key=cache_key,
         ttl_seconds=3600,  # funding updates every 8h, 1h cache is fine
-        fetch_fn=lambda: requests.get(
-            f"{BASE_URL}/fapi/v1/fundingRate", params=params, timeout=30
-        ).json(),
+        fetch_fn=lambda: _request_json(f"{BASE_URL}/fapi/v1/fundingRate", params=params, timeout=30),
     )
 
     now_utc = datetime.now(timezone.utc)
@@ -205,10 +207,9 @@ def get_long_short_ratio(
     raw = cached_fetch(
         key=cache_key,
         ttl_seconds=ttl,
-        fetch_fn=lambda: requests.get(
-            f"{BASE_URL}/futures/data/globalLongShortAccountRatio",
-            params=params, timeout=30,
-        ).json(),
+        fetch_fn=lambda: _request_json(
+            f"{BASE_URL}/futures/data/globalLongShortAccountRatio", params=params, timeout=30
+        ),
     )
 
     now_utc = datetime.now(timezone.utc)
@@ -251,11 +252,9 @@ def get_open_interest(symbol: str = "BTCUSDT") -> dict:
     raw = cached_fetch(
         key=cache_key,
         ttl_seconds=300,  # 5 min cache for a point-in-time value
-        fetch_fn=lambda: requests.get(
-            f"{BASE_URL}/fapi/v1/openInterest",
-            params={"symbol": symbol},
-            timeout=30,
-        ).json(),
+        fetch_fn=lambda: _request_json(
+            f"{BASE_URL}/fapi/v1/openInterest", params={"symbol": symbol}, timeout=30
+        ),
     )
 
     return {
@@ -280,11 +279,9 @@ def get_orderbook_depth(symbol: str = "BTCUSDT", limit: int = 100) -> dict:
     raw = cached_fetch(
         key=cache_key,
         ttl_seconds=15,  # 15s cache, fast enough for our UI
-        fetch_fn=lambda: requests.get(
-            f"{BASE_URL}/fapi/v1/depth",
-            params={"symbol": symbol, "limit": limit},
-            timeout=10,
-        ).json(),
+        fetch_fn=lambda: _request_json(
+            f"{BASE_URL}/fapi/v1/depth", params={"symbol": symbol, "limit": limit}, timeout=10
+        ),
     )
 
     return {

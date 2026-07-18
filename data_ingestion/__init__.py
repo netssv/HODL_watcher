@@ -21,6 +21,12 @@ from . import onchain_metrics
 from . import etf_flows
 from . import news_currents
 from . import hyperliquid
+from . import okx
+from . import kraken
+from . import bybit
+from . import news_gnews
+from . import news_coindesk
+from . import dxy
 
 __all__ = [
     "binance_spot",
@@ -36,4 +42,10 @@ __all__ = [
     "etf_flows",
     "news_currents",
     "hyperliquid",
+    "okx",
+    "kraken",
+    "bybit",
+    "news_gnews",
+    "news_coindesk",
+    "dxy",
 ]

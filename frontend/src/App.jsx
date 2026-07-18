@@ -12,6 +12,8 @@ import { useSidebarCollapse } from './hooks/useSidebarCollapse.js';
 import { useWidgetLayout } from './hooks/useWidgetLayout.js';
 import { usePredictData } from './hooks/usePredictData.js';
 import { LayoutDashboard } from 'lucide-react';
+import { CompositeScore } from './components/CompositeScore.jsx';
+import PracticeView from './components/PracticeView.jsx';
 
 export default function App() {
   const [playClick] = useSound('/click.wav');
@@ -21,16 +23,19 @@ export default function App() {
   const [isSimpleMode, setIsSimpleMode]       = useState(false);
   const [showExplainers, setShowExplainers]   = useState(false);
   const [sidebarHidden, setSidebarHidden]     = useState(false);
+  const [practiceMode, setPracticeMode]       = useState(false);
   const [showEmbargoTooltip, setShowEmbargoTooltip] = useState(false);
 
   // Prediction Custom Hook
   const {
     horizonHours, setHorizonHours,
+    selectHorizon,
     thresholdPct, setThresholdPct,
     featureConfig, setFeatureConfig,
     predictionData, prevPrediction,
     trainingReport, strategy,
     loading, trainLoading,
+    cooldownRemaining,
     showTrainModal, setShowTrainModal,
     gaps, error, lastFetchedTime, livePrice, signalLog,
     fetchPrediction, handleTrain
@@ -45,6 +50,8 @@ export default function App() {
 
   return (
     <div>
+      {practiceMode && <PracticeView onExit={() => setPracticeMode(false)} />}
+      {!practiceMode && <>
       <TrainModal
         visible={showTrainModal}
         trainLoading={trainLoading}
@@ -58,13 +65,16 @@ export default function App() {
           showExplainers={showExplainers} setShowExplainers={setShowExplainers}
           sidebarHidden={sidebarHidden} setSidebarHidden={setSidebarHidden}
           loading={loading} fetchPrediction={fetchPrediction} playClick={playClick}
+          onPractice={() => setPracticeMode(true)}
         />
         
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-0.75rem', marginBottom: '0.5rem', zIndex: 10 }}>
-          <button onClick={resetLayout} className="btn btn-secondary" title="Reset layout to default">
-            <LayoutDashboard size={14} /> Reset Layout
-          </button>
-        </div>
+        {!isSimpleMode && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-0.75rem', marginBottom: '0.5rem', zIndex: 10 }}>
+            <button onClick={resetLayout} className="btn btn-secondary" title="Reset layout to default">
+              <LayoutDashboard size={14} /> Reset Layout
+            </button>
+          </div>
+        )}
 
         <ErrorBanner error={error} />
         {showExplainers && (
@@ -79,15 +89,20 @@ export default function App() {
             <SetupCard
               isSimpleMode={isSimpleMode} horizonHours={horizonHours} setHorizonHours={setHorizonHours}
               thresholdPct={thresholdPct} setThresholdPct={setThresholdPct}
+              selectHorizon={selectHorizon}
               featureConfig={featureConfig} setFeatureConfig={setFeatureConfig}
               trainLoading={trainLoading} handleTrain={handleTrain} playClick={playClick}
+              cooldownRemaining={cooldownRemaining}
               collapsed={sidebarCollapsed} toggleCollapse={toggleSidebar}
               hiddenWidgets={hiddenWidgets} minimizedWidgets={minimizedWidgets} restoreWidget={restoreWidget}
+              predictionData={predictionData} loading={loading} fetchPrediction={fetchPrediction}
             />
-            <div style={{ display: sidebarCollapsed ? 'none' : 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-              {!isSimpleMode && <ApiPipelineCard gaps={gaps} error={error} />}
-              {!isSimpleMode && <SignalLogCard log={signalLog} />}
-            </div>
+            {!isSimpleMode && (
+              <div style={{ display: sidebarCollapsed ? 'none' : 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                <ApiPipelineCard gaps={gaps} error={error} />
+                <SignalLogCard log={signalLog} />
+              </div>
+            )}
             <MarketSnapshotCard
               predictionData={predictionData} prevPredictionData={prevPrediction} livePrice={livePrice}
               lastFetchedTime={lastFetchedTime} isSimpleMode={isSimpleMode}
@@ -111,8 +126,9 @@ export default function App() {
               minimizeWidget={minimizeWidget}
               toggleMaximize={toggleMaximize}
               restoreWidget={restoreWidget}
+              isSimpleMode={isSimpleMode}
             >
-              <div key="chart" id="chart" title="Chart">
+              <div key="chart" id="chart" title={isSimpleMode ? 'Bitcoin chart' : 'Chart'}>
                 {predictionData && (
                   <CandlestickChart 
                     isSimpleMode={isSimpleMode} 
@@ -122,6 +138,11 @@ export default function App() {
                   />
                 )}
               </div>
+              {predictionData && (
+                <div key="composite" id="composite" title="Composite Technical Signal">
+                  <CompositeScore payload={predictionData} isSimpleMode={isSimpleMode} />
+                </div>
+              )}
               
               {!isSimpleMode && predictionData && (
                 <div key="indicators" id="indicators" title="Advanced Quantitative Indicators">
@@ -172,6 +193,7 @@ export default function App() {
           </div>
         </main>
       </div>
+    </>}
     </div>
   );
 }

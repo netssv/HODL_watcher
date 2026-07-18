@@ -209,4 +209,17 @@
 .proj-up   { background: var(--up-bg);       border-color: rgba(16,185,129,0.18); }
 .proj-up .projection-card-label { color: var(--up-color); }
 .proj-up .projection-card-val   { color: var(--up-color); }
+.setup-action-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+}
+.setup-action-grid .btn {
+  width: 100%;
+  min-width: 0;
+  justify-content: center;
+  white-space: normal;
+  text-align: center;
+}
 

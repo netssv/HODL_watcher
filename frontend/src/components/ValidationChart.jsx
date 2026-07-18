@@ -6,8 +6,10 @@ const pct = value => value == null || Number.isNaN(Number(value)) ? 'N/A' : `${(
 const num = value => value == null || Number.isNaN(Number(value)) ? 'N/A' : Number(value).toFixed(2);
 
 export function ValidationChart({ trainingReport }) {
-  const overall = trainingReport?.overall || {};
-  const meta = trainingReport?.metadata || {};
+  // The API exposes validation_summary in a flattened shape; keep support for
+  // the raw training report too so the metric never disappears as N/A.
+  const overall = trainingReport?.overall || trainingReport || {};
+  const meta = trainingReport?.metadata || trainingReport || {};
   const folds = trainingReport?.folds || [];
   const baselines = overall.baselines || {};
   const trading = overall.trading_metrics || overall.trading;
@@ -56,7 +58,7 @@ export function ValidationChart({ trainingReport }) {
             <Metric label="Model accuracy" value={`${pct(overall.mean_accuracy)} ± ${pct(overall.std_accuracy)}`} />
             <Metric label="Majority baseline" value={pct(baselines.mean_majority_class)} />
             <Metric label="Persistence baseline" value={pct(baselines.mean_persistence)} />
-            <Metric label="Test folds" value={`${meta.n_folds || data.length} · ${meta.horizon_periods || '?'}h horizon`} />
+            <Metric label="Test folds" value={`${meta.n_folds || data.length} · ${meta.horizon_periods ?? meta.horizon_hours ?? 24}h horizon`} />
           </div>
 
           <div style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', lineHeight: 1.45 }}>

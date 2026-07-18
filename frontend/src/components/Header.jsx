@@ -25,6 +25,7 @@ export function AppHeader({
   showExplainers, setShowExplainers,
   sidebarHidden, setSidebarHidden,
   loading, fetchPrediction, playClick,
+  onPractice,
 }) {
   const fmtPrice = n => n?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -53,7 +54,7 @@ export function AppHeader({
         <div className="header-title">
           <h1>HODL Watcher</h1>
           <p>
-            BTC/USDT Quantitative Analysis
+            BTC/USDT signal desk · stack sats, skip noise
             {livePrice && (
               <span style={{ marginLeft: '0.75rem', color: '#10b981', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700 }}>
                 ${fmtPrice(livePrice)}
@@ -69,7 +70,7 @@ export function AppHeader({
         <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', alignItems: 'center' }}>
           {/* Projection Summary */}
           <div className="header-card">
-            <span className="header-card-label">Projection</span>
+            <span className="header-card-label">{isSimpleMode ? 'Next move' : 'Projection'}</span>
             <span className="header-card-value" style={{ color: predColor }}>
               {isLowConf ? "NO ACTION" : predText}
             </span>
@@ -83,7 +84,7 @@ export function AppHeader({
           {/* Fear & Greed */}
           {fg != null && (
             <div className="header-card">
-              <span className="header-card-label">Fear & Greed</span>
+            <span className="header-card-label">{isSimpleMode ? 'Crowd mood' : 'Fear & Greed'}</span>
               <span className="header-card-value" style={{ color: fg > 75 ? 'var(--down-color)' : fg < 25 ? 'var(--up-color)' : 'var(--text-primary)' }}>
                 {fg} / 100
               </span>
@@ -98,7 +99,7 @@ export function AppHeader({
           {/* News Tone */}
           {newsPct != null && (
             <div className="header-card">
-              <span className="header-card-label">News Tone</span>
+            <span className="header-card-label">{isSimpleMode ? 'Market chatter' : 'News Tone'}</span>
               <span className="header-card-value" style={{ color: newsPct > 60 ? 'var(--up-color)' : newsPct < 40 ? 'var(--down-color)' : 'var(--text-primary)' }}>
                 {newsPct.toFixed(0)}% Bullish
               </span>
@@ -113,7 +114,7 @@ export function AppHeader({
           {/* Funding Rate */}
           {fr != null && (
             <div className="header-card">
-              <span className="header-card-label">Funding Rate</span>
+            <span className="header-card-label">{isSimpleMode ? 'Leverage mood' : 'Funding Rate'}</span>
               <span className="header-card-value" style={{ color: fr > 0 ? 'var(--up-color)' : 'var(--down-color)' }}>
                 {(fr * 100).toFixed(3)}%
               </span>
@@ -125,16 +126,16 @@ export function AppHeader({
             </div>
           )}
 
-          {/* FRED broad USD index */}
+          {/* ICE DXY quote */}
           {usdIndex != null && (
             <div className="header-card">
-              <span className="header-card-label">Broad USD (FRED)</span>
+              <span className="header-card-label">DXY (ICE)</span>
               <span className="header-card-value" style={{ color: usdIndexChange > 0 ? 'var(--down-color)' : usdIndexChange < 0 ? 'var(--up-color)' : 'var(--text-primary)' }}>
                 {usdIndex.toFixed(2)}
               </span>
               <div className="header-tooltip">
-                <span className="header-tooltip-title">Nominal Broad U.S. Dollar Index</span>
-                <span className="header-tooltip-desc">FRED DTWEXBGS: a real, daily, trade-weighted broad USD index. This is not the ICE DXY contract.</span>
+                <span className="header-tooltip-title">U.S. Dollar Index (DXY)</span>
+                <span className="header-tooltip-desc">ICE U.S. Dollar Index (DXY), sourced from DX-Y.NYB. Quote data may be delayed.</span>
                 <span className="header-tooltip-example">{usdIndexChange != null ? `Latest daily change: ${(usdIndexChange * 100).toFixed(2)}%` : 'Daily change unavailable.'}</span>
               </div>
             </div>
@@ -157,10 +158,11 @@ export function AppHeader({
         </div>
       </div>
       <div className="header-buttons">
-        <div style={{ display: 'flex', backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '2px', alignItems: 'center' }}>
-          {[['Simple', true], ['Advanced', false]].map(([lbl, val]) => (
+        <div className="mode-switch" style={{ display: 'flex', backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '2px', alignItems: 'center' }}>
+          {[['HODL', true], ['PRO', false]].map(([lbl, val]) => (
             <button key={lbl}
               onClick={() => { if (isSimpleMode !== val) { playClick(); setIsSimpleMode(val); } }}
+              title={val ? 'HODL mode — keep it calm: price, projection, and risk' : 'PRO mode — full market context and indicators'}
               style={{
                 padding: '0.35rem 0.7rem', fontSize: '0.90rem', fontWeight: 600, border: 'none', borderRadius: '3px', cursor: 'pointer', transition: 'all 0.2s',
                 backgroundColor: isSimpleMode === val ? 'var(--accent-brand)' : 'transparent',
@@ -172,12 +174,13 @@ export function AppHeader({
             </button>
           ))}
         </div>
+        <button onClick={onPractice} className="btn btn-secondary" title="Open risk-free historical simulator">PRACTICE</button>
         <button
           onClick={() => { playClick(); setShowExplainers(v => !v); }}
           className="btn btn-secondary"
         >
           <BookOpen className="w-3.5 h-3.5 text-blue-500" />
-          {showExplainers ? 'Hide Guide' : 'Methodology Guide'}
+          {showExplainers ? (isSimpleMode ? 'Close field notes' : 'Hide Guide') : (isSimpleMode ? 'Why this signal?' : 'Methodology Guide')}
         </button>
 
         <button
@@ -186,7 +189,7 @@ export function AppHeader({
           className="btn btn-primary"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
+          {isSimpleMode ? 'Check the chain' : 'Refresh'}
         </button>
       </div>
     </header>

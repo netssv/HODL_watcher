@@ -3,6 +3,9 @@ import { deriveStrategy } from '../utils.jsx';
 
 const API = import.meta.env.VITE_API_BASE_URL || '';
 const THROTTLE_MS = 5000;
+const CALIBRATION_CACHE_MS = 6 * 60 * 60 * 1000;
+const RECALIBRATION_COOLDOWN_MS = 15 * 60 * 1000;
+const HORIZON_SETTINGS = { 4: 0.003, 24: 0.005, 72: 0.01 };
 
 // Poll /api/predict until it succeeds. Silently retries 503 (model warming up).
 // Max wait: 30 attempts x 10s = 5 minutes.
@@ -44,16 +47,25 @@ export function usePredictData(playChime) {
   const [livePrice, setLivePrice]             = useState(null);
   const prevPredictionRef                     = useRef(null);
   const [signalLog, setSignalLog]             = useState([]);
+  const [calibrationCache, setCalibrationCache] = useState({});
+  const [cooldownUntil, setCooldownUntil] = useState(0);
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
+
+  useEffect(() => {
+    const update = () => setCooldownRemaining(Math.max(0, cooldownUntil - Date.now()));
+    update();
+    const timer = setInterval(update, 1000);
+    return () => clearInterval(timer);
+  }, [cooldownUntil]);
 
   // Fetch data
-  const fetchPrediction = async (force = false) => {
+  const fetchPrediction = async (force = false, refreshSources = force) => {
     const now = Date.now();
     if (!force && lastFetchedTime && now - lastFetchedTime < THROTTLE_MS) return;
     setLoading(true); setError(null);
     try {
-      // Use retry only on the first auto-fetch (not force refreshes)
-      const fetcher = !force ? fetchWithRetry : fetch;
-      const res = await fetcher(`${API}/api/predict`);
+      // Refresh can also race model warmup; retry temporary 503 responses.
+      const res = await fetchWithRetry(`${API}/api/predict${refreshSources ? `?force_refresh=${Date.now()}` : ''}`);
       if (!res.ok) throw new Error(`Server error ${res.status}`);
       const data = await res.json();
       
@@ -79,8 +91,28 @@ export function usePredictData(playChime) {
       setLastFetchedTime(now);
       if (data.payload?.validation_summary) setTrainingReport(data.payload.validation_summary);
       setStrategy(deriveStrategy(data.payload));
+      const trainedHorizon = data.payload?.meta?.horizon_hours;
+      if (trainedHorizon != null) {
+        setCalibrationCache(cache => ({
+          ...cache,
+          [trainedHorizon]: { payload: data.payload, gaps: data.data_gaps || [], savedAt: Date.now() },
+        }));
+      }
     } catch (err) { setError(err.message); }
     finally { setLoading(false); }
+  };
+
+  const selectHorizon = hours => {
+    setHorizonHours(hours);
+    setThresholdPct(HORIZON_SETTINGS[hours] ?? 0.005);
+    const cached = calibrationCache[hours];
+    if (!cached || Date.now() - cached.savedAt > CALIBRATION_CACHE_MS) return false;
+    setPredictionData(cached.payload);
+    setGaps(cached.gaps);
+    setTrainingReport(cached.payload.validation_summary);
+    setStrategy(deriveStrategy(cached.payload));
+    setLastFetchedTime(cached.savedAt);
+    return true;
   };
 
   // Live price via Binance WebSocket
@@ -93,18 +125,27 @@ export function usePredictData(playChime) {
 
   // Train model
   const handleTrain = async () => {
+    if (cooldownRemaining > 0 || trainLoading) return;
     setShowTrainModal(true);
     setTrainLoading(true); setError(null);
     try {
-      const res = await fetch(`${API}/api/train`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ horizon_hours: horizonHours, threshold_pct: thresholdPct, features_config: featureConfig }),
-      });
-      if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Training failed'); }
-      const data = await res.json();
-      setTrainingReport(data.validation_summary);
-      setGaps(data.data_gaps || []);
-      fetchPrediction(true);
+      for (const [index, hours] of [4, 24, 72].entries()) {
+        const threshold = HORIZON_SETTINGS[hours];
+        setHorizonHours(hours);
+        setThresholdPct(threshold);
+        const res = await fetch(`${API}/api/train`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ horizon_hours: hours, threshold_pct: threshold, features_config: featureConfig, force_refresh: index === 0 }),
+        });
+        if (!res.ok) { const e = await res.json(); throw new Error(e.detail || `${hours}h calibration failed`); }
+        const data = await res.json();
+        setTrainingReport(data.validation_summary);
+        setGaps(data.data_gaps || []);
+        // Training already fetched fresh sources; avoid clearing/refetching them
+        // again just to retrieve the newly trained prediction.
+        await fetchPrediction(true, false);
+      }
+      setCooldownUntil(Date.now() + RECALIBRATION_COOLDOWN_MS);
       if (playChime) playChime();
     } catch (err) { setError(err.message); }
     finally { setTrainLoading(false); }
@@ -112,11 +153,13 @@ export function usePredictData(playChime) {
 
   return {
     horizonHours, setHorizonHours,
+    selectHorizon,
     thresholdPct, setThresholdPct,
     featureConfig, setFeatureConfig,
     predictionData, prevPrediction: prevPredictionRef.current,
     trainingReport, strategy,
     loading, trainLoading,
+    cooldownRemaining,
     showTrainModal, setShowTrainModal,
     gaps, error, lastFetchedTime, livePrice, signalLog,
     fetchPrediction, handleTrain

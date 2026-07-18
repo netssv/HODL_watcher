@@ -49,24 +49,22 @@ export function DerivativesGroup({ rsi, fr, ls, liq, opt, hl }) {
   );
 }
 
-export function OnChainGroup({ onchain }) {
+export function NetworkGroup({ network }) {
+  const mempool = network?.mempool;
+  const fees = network?.fees;
   return (
-    <IndicatorGroup title="On-Chain & Flows" cols="2">
+    <IndicatorGroup title="Bitcoin Network" cols="2">
       <IndicatorCard
-        label="Exch. Net Flow"
-        valueCls={onchain?.exchange_net_flow < 0 ? 'ind-value--up' : 'ind-value--down'}
-        value={onchain?.exchange_net_flow != null ? `${onchain.exchange_net_flow.toFixed(1)} BTC` : 'No data'}
-        trend={numTrend(onchain?.exchange_net_flow, 0, true)}
-        gloss={onchain?.exchange_net_flow < 0 ? 'BTC leaving exchanges — holders accumulating' : 'BTC inflows — selling pressure possible'}
-        definition="Negative = BTC moving to cold wallets. Positive = prepping for sale."
+        label="Mempool Transactions"
+        value={mempool?.count != null ? fmtNum(mempool.count, 0) : 'No data'}
+        gloss="Unconfirmed Bitcoin transactions waiting for blocks"
+        definition="Current unconfirmed transaction count from mempool.space. This is network activity, not exchange flow."
       />
       <IndicatorCard
-        label="BTC Volume Proxy"
-        valueCls={onchain?.btc_volume_proxy > 0 ? 'ind-value--up' : 'ind-value--down'}
-        value={onchain?.btc_volume_proxy != null ? `$${onchain.btc_volume_proxy.toFixed(1)}M` : 'No data'}
-        trend={numTrend(onchain?.btc_volume_proxy)}
-        gloss="CoinGecko volume minus Binance spot volume; not ETF flow."
-        definition="A market-volume proxy, not a measure of ETF creations or redemptions."
+        label="Fastest Fee"
+        value={fees?.fastest_fee != null ? `${fmtNum(fees.fastest_fee, 0)} sat/vB` : 'No data'}
+        gloss="Recommended fee for faster confirmation"
+        definition="Mempool.space recommended fastest fee in satoshis per virtual byte."
       />
     </IndicatorGroup>
   );
@@ -97,11 +95,11 @@ export function MacroGroup({ macro }) {
   return (
     <IndicatorGroup title="Macro" cols="2">
       <IndicatorCard
-        label="Broad USD (FRED)"
+        label="DXY (ICE)"
         valueCls={macro?.usd_index_change_pct > 0 ? 'ind-value--down' : macro?.usd_index_change_pct < 0 ? 'ind-value--up' : 'ind-value--na'}
         value={macro?.usd_index != null ? `${fmtNum(macro.usd_index, 2)}${macro.usd_index_change_pct != null ? ` (${macro.usd_index_change_pct >= 0 ? '+' : ''}${(macro.usd_index_change_pct * 100).toFixed(2)}%)` : ''}` : 'No data'}
-        gloss={macro?.usd_index_change_pct > 0 ? 'Broad USD rising — BTC headwind' : macro?.usd_index_change_pct < 0 ? 'Broad USD falling — BTC tailwind' : 'Daily change unavailable'}
-        definition="FRED DTWEXBGS Nominal Broad U.S. Dollar Index. It is a broad trade-weighted USD measure, not ICE DXY."
+        gloss={macro?.usd_index_change_pct > 0 ? 'DXY rising — BTC headwind' : macro?.usd_index_change_pct < 0 ? 'DXY falling — BTC tailwind' : 'Daily change unavailable'}
+        definition="ICE U.S. Dollar Index (DXY), sourced from the DX-Y.NYB market quote. Quote data may be delayed."
       />
       <IndicatorCard
         label="Fed Funds Rate"

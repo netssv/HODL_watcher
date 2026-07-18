@@ -79,9 +79,10 @@ export function applyCandles(chart, data, predictionData, thresholdPct) {
   ser.setData(data);
 
   const price = data.at(-1)?.close;
-  if (!predictionData || !price) return { ser, predLines: [] };
+  if (!predictionData || !price) return { ser, predLines: [], trendLines: [] };
 
   const predLines = [];
+  const trendLines = [];
   const lastCandle = data.at(-1);
   const secondLast = data.at(-2);
   const tfSeconds = lastCandle && secondLast ? (lastCandle.time - secondLast.time) : 3600;
@@ -146,7 +147,78 @@ export function applyCandles(chart, data, predictionData, thresholdPct) {
     size:     1,
   }]);
 
-  return { ser, predLines };
+  // One clearly translucent candle marks the model's projected horizon. It is
+  // intentionally separate from historical data so forecast is never mistaken
+  // for an observed market candle.
+  const horizonHours = predictionData.validation_summary?.horizon_hours
+    ?? predictionData.validation_summary?.horizon_periods
+    ?? predictionData.meta?.horizon_hours
+    ?? 24;
+  // Keep the forecast at its real horizon. Rounding it to a candle interval
+  // made a 24h forecast jump one full week/month on larger timeframes.
+  const futureTime = lastCandle.time + horizonHours * 3600;
+  const move = thresholdPct * (0.65 + prob * 0.35);
+  const projectedClose = dir === 'up' ? price * (1 + move) : dir === 'down' ? price * (1 - move) : price;
+  const projectedHigh = Math.max(price, projectedClose) * (1 + move * 0.35);
+  const projectedLow = Math.min(price, projectedClose) * (1 - move * 0.35);
+  const projectionColor = dir === 'up' ? 'rgba(63,118,101,0.42)' : dir === 'down' ? 'rgba(198,93,75,0.42)' : 'rgba(167,163,155,0.42)';
+  const projection = chart.addSeries(CandlestickSeries, {
+    upColor: projectionColor, downColor: projectionColor,
+    borderUpColor: projectionColor, borderDownColor: projectionColor,
+    wickUpColor: projectionColor, wickDownColor: projectionColor,
+    priceLineVisible: false, lastValueVisible: false,
+  });
+  projection.setData([{ time: futureTime, open: price, high: projectedHigh, low: projectedLow, close: projectedClose }]);
+  createSeriesMarkers(projection, [{
+    time: futureTime,
+    position: dir === 'down' ? 'aboveBar' : 'belowBar',
+    color: projectionColor,
+    shape: 'circle',
+    text: `${horizonHours}h forecast`,
+    size: 1,
+  }]);
+
+  // Lightweight trader-style structure lines: connect a recent swing low and
+  // high from each half of the visible history, avoiding a noisy best-fit line.
+  const swingWindow = data.slice(-60);
+  const midpoint = Math.max(1, Math.floor(swingWindow.length / 2));
+  const firstHalf = swingWindow.slice(0, midpoint);
+  const secondHalf = swingWindow.slice(midpoint);
+  if (firstHalf.length && secondHalf.length) {
+    const supportPoints = [
+      firstHalf.reduce((a, b) => b.low < a.low ? b : a),
+      secondHalf.reduce((a, b) => b.low < a.low ? b : a),
+    ];
+    const resistancePoints = [
+      firstHalf.reduce((a, b) => b.high > a.high ? b : a),
+      secondHalf.reduce((a, b) => b.high > a.high ? b : a),
+    ];
+    [[supportPoints, 'rgba(34,211,238,0.95)', 'Support'], [resistancePoints, 'rgba(251,191,36,0.95)', 'Resistance']]
+      .forEach(([points, color, title]) => {
+        points.sort((a, b) => a.time - b.time);
+        const [first, second] = points;
+        const elapsed = second.time - first.time;
+        const firstValue = first.low ?? first.high;
+        const secondValue = second.low ?? second.high;
+        const slope = elapsed ? (secondValue - firstValue) / elapsed : 0;
+        const projectionTime = second.time + Math.max(elapsed, 1);
+        const projectionValue = secondValue + slope * (projectionTime - second.time);
+        const trend = chart.addSeries(LineSeries, {
+          color, lineWidth: 1, lineStyle: STYLE_DASHED,
+          priceLineVisible: false, lastValueVisible: true,
+          crosshairMarkerVisible: false, title,
+        });
+        trend.applyOptions({ lineWidth: 2 });
+        trend.setData([
+          { time: first.time, value: firstValue },
+          { time: second.time, value: secondValue },
+          { time: projectionTime, value: projectionValue },
+        ]);
+        trendLines.push({ line: trend, color });
+      });
+  }
+
+  return { ser, predLines, trendLines };
 }
 
 // ── Volume histogram (proper sub-panel with own scale, capped height) ─────────

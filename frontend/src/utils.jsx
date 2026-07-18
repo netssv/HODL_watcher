@@ -7,36 +7,82 @@ export const fmtPct = (n, d = 1) => `${(n * 100).toFixed(d)}%`;
 
 /** Derive status for an API connector from current gaps/error state */
 export const getConnectorStatus = (name, gaps, error) => {
-  if (error) return { label: 'Offline', color: 'status-offline' };
+  if (error) return { label: 'Offline', color: 'status-offline', detail: 'The backend is unreachable.' };
   const nameLower = name.toLowerCase();
+
+  if (nameLower === 'okx') {
+    if (gaps.some(g => g.includes('spot_source: kraken_fallback')))
+      return { label: 'Degraded', color: 'status-unknown', detail: 'OKX failed; Kraken is currently supplying spot candles.' };
+    if (gaps.some(g => g.includes('spot_source: okx_fallback')))
+      return { label: 'Fallback (Active)', color: 'status-warning', detail: 'OKX is currently supplying spot candles because Binance spot data failed or was empty.' };
+    if (gaps.some(g => g.toLowerCase().includes('okx_spot:')))
+      return { label: 'Degraded', color: 'status-unknown', detail: 'OKX was tried as a fallback but also returned an error or no data.' };
+    return { label: 'Standby', color: 'status-online', detail: 'OKX is available as a spot-data fallback and is not currently being used.' };
+  }
+
+  if (nameLower === 'kraken') {
+    if (gaps.some(g => g.includes('spot_source: bybit_fallback')))
+      return { label: 'Degraded', color: 'status-unknown', detail: 'Kraken failed; Bybit is currently supplying spot candles.' };
+    if (gaps.some(g => g.includes('spot_source: kraken_fallback')))
+      return { label: 'Fallback (Active)', color: 'status-warning', detail: 'Kraken is currently supplying spot candles because Binance and OKX failed or returned no data.' };
+    if (gaps.some(g => g.toLowerCase().includes('kraken_spot:')))
+      return { label: 'Degraded', color: 'status-unknown', detail: 'Kraken was tried as the final spot-data fallback but also returned an error or no data.' };
+    return { label: 'Standby', color: 'status-online', detail: 'Kraken is available as the final spot-data fallback and is not currently being used.' };
+  }
+
+  if (nameLower === 'bybit') {
+    if (gaps.some(g => g.includes('spot_source: bybit_fallback')))
+      return { label: 'Fallback (Active)', color: 'status-warning', detail: 'Bybit is supplying spot candles because Binance, OKX, and Kraken failed or returned no data.' };
+    if (gaps.some(g => g.toLowerCase().includes('bybit_spot:')))
+      return { label: 'Degraded', color: 'status-unknown', detail: 'Bybit was tried as the final spot-data fallback but returned an error or no data.' };
+    return { label: 'Standby', color: 'status-online', detail: 'Bybit is available as the final spot-data fallback and is not currently being used.' };
+  }
+
+  if (nameLower === 'binance' && gaps.some(g => g.includes('trying OKX fallback')))
+    return { label: 'Degraded', color: 'status-unknown', detail: 'A Binance spot request failed or returned no data; OKX is being used as the fallback.' };
+
+  if (nameLower === 'bitcoin_network') {
+    if (gaps.some(g => g.toLowerCase().includes('bitcoin_network:')))
+      return { label: 'Degraded', color: 'status-unknown', detail: 'Mempool.space network metrics could not be loaded.' };
+    return { label: 'Online', color: 'status-online', detail: 'Mempool size, pending transactions, and recommended fees are available from mempool.space.' };
+  }
 
   // Explicit Online signals from fallback sources
   if (nameLower === 'currents_news') {
     if (gaps.some(g => g.includes('news: currents_api')))
-      return { label: 'Online', color: 'status-online' };
+      return { label: 'Online', color: 'status-online', detail: 'Currents is providing the news feed.' };
     if (gaps.some(g => g.includes('news: newsapi_fallback')))
-      return { label: 'Online', color: 'status-online' };
+      return { label: 'Online', color: 'status-online', detail: 'NewsAPI is providing the news fallback.' };
+    if (gaps.some(g => g.includes('news: gnews_fallback')))
+      return { label: 'Online', color: 'status-online', detail: 'GNews is providing the news fallback.' };
   }
   if (nameLower === 'etf_flows') {
     if (gaps.some(g => g.includes('btc_volume_proxy: coingecko')))
-      return { label: 'Proxy (CoinGecko)', color: 'status-warning' };
+      return { label: 'Proxy (CoinGecko)', color: 'status-warning', detail: 'CoinGecko volume is being used as a proxy; this is not ETF flow data.' };
   }
+
+  if (nameLower === 'coinalyze' && gaps.some(g => g.includes('coinalyze: binance_public_fallback')))
+    return { label: 'Fallback (Binance)', color: 'status-warning', detail: 'Binance public data is being used because Coinalyze data is unavailable.' };
+  if (nameLower === 'deribit' && gaps.some(g => g.toLowerCase().includes('deribit: unavailable')))
+    return { label: 'Unavailable', color: 'status-warning', detail: 'No Deribit options data is available.' };
+  if (nameLower === 'onchain' && gaps.some(g => g.toLowerCase().includes('onchain_exchange_flows: unavailable')))
+    return { label: 'Unavailable', color: 'status-warning', detail: 'No on-chain data is available.' };
 
   const hasMissingKey = gaps.some(g => {
     const gl = g.toLowerCase();
     return gl.includes(nameLower) && gl.includes('missing_key');
   });
-  if (hasMissingKey) return { label: 'NO KEY', color: 'status-warning' };
+  if (hasMissingKey) return { label: 'NO KEY', color: 'status-warning', detail: `The ${name} API key is missing.` };
 
   const hasMock = gaps.some(g => {
     const gl = g.toLowerCase();
     return gl.includes(nameLower) && gl.includes('mock_data');
   });
-  if (hasMock) return { label: 'MOCK', color: 'status-warning' };
+  if (hasMock) return { label: 'MOCK', color: 'status-warning', detail: `${name} is using simulated data.` };
 
   if (gaps.some(g => g.toLowerCase().includes(nameLower)))
-    return { label: 'Degraded', color: 'status-unknown' };
-  return { label: 'Online', color: 'status-online' };
+    return { label: 'Degraded', color: 'status-unknown', detail: gaps.filter(g => g.toLowerCase().includes(nameLower)).join(' ') };
+  return { label: 'Online', color: 'status-online', detail: `${name} is responding normally.` };
 };
 
 /** Return JSX badge for baseline comparison */

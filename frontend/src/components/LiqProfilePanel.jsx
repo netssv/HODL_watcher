@@ -125,8 +125,8 @@ export function LiqProfilePanel({ predictionData, currentPrice, visibleRange }) 
           const barW = Math.max(isReal && volumeUSD === 0 ? 0 : 3, Math.round(intensity * (isHovered ? 85 : 60)));
           const color = heatColor(intensity);
 
-          // Only label key levels + every 8th row to reduce noise
-          const showLabel = isCurrent || isShortLiq || isLongLiq || i % 8 === 0;
+          // Keep price labels hidden until the row is hovered to reduce chart noise.
+          const showLabel = isHovered;
           const tooltipText = isReal
             ? `$${(volumeUSD / 1_000_000).toFixed(2)}M estimated level notional`
             : 'No Binance OI estimate in this price bucket';

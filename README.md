@@ -10,6 +10,8 @@ A quantitative dashboard and honest strategy generator for BTC/USDT. It combines
 * Macro & Sentiment Ribbon: Live summaries for Fear & Greed index, News Tone sentiment distribution, FRED's Nominal Broad USD Index, and exchange flows. The USD series is explicitly not ICE DXY. Includes hover tooltips detailing explanation definitions and concrete examples.
 * Honest Strategist Payload: Standardized API endpoints exporting clean market microstructure data directly to external strategy makers.
 
+* Composite score backlog: real VPVR still requires persisted historical volume-by-price data; the current composite uses Order Book Depth (not VPVR) and does not claim to be a volume profile.
+
 ## Quick Start
 
 ### First Time Setup (One-Time Per Computer)

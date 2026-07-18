@@ -15,6 +15,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.routes import router, warmup_training
+from data_ingestion.dxy import SOURCE_VERSION as MACRO_DXY_SOURCE
 
 # Setup logger
 logging.basicConfig(level=logging.INFO)
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info("Active macro_dxy source: %s", MACRO_DXY_SOURCE)
     # Warm up model in background — predict returns 503 until done
     threading.Thread(target=warmup_training, daemon=True).start()
     yield
@@ -51,4 +53,3 @@ app.add_middleware(
 )
 
 app.include_router(router)
-

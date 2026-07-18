@@ -36,6 +36,7 @@ class TrainRequest(BaseModel):
     n_folds: int = Field(default=8, ge=8, le=15)
     threshold_pct: float = Field(default=0.005, ge=0.0, le=0.05)
     features_config: FeatureGroupConfig = FeatureGroupConfig()
+    force_refresh: bool = False
 
 class TrainResponse(BaseModel):
     status: str

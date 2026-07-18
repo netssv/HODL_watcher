@@ -57,6 +57,12 @@ def build_features(
     df['ma_7'] = df['close'].rolling(window=7, center=False).mean()
     df['ma_25'] = df['close'].rolling(window=25, center=False).mean()
     df['ma_99'] = df['close'].rolling(window=99, center=False).mean()
+
+    # Chart-aligned EMA values exposed for auditable composite scoring.
+    for period in (9, 21, 50, 100, 200):
+        ema = df['close'].ewm(span=period, adjust=False).mean()
+        df[f'ema_{period}'] = ema
+        df[f'ema_{period}_slope'] = ema.pct_change()
     
     df['atr'] = compute_atr(df)
     
@@ -165,6 +171,12 @@ def build_features(
                     direction='backward'
                 )
                 df.rename(columns={'value': f'macro_{name}'}, inplace=True)
+                if name == 'dxy':
+                    # Persist provenance beside macro_dxy; this string is metadata,
+                    # not a model input, so validation excludes it as non-numeric.
+                    df['macro_dxy_source'] = macro_df.attrs.get(
+                        'macro_dxy_source', 'unknown'
+                    )
 
     # 6. Join order book features (distance to large bids/asks & imbalance)
     if order_book_df is not None and not order_book_df.empty:
@@ -201,6 +213,8 @@ def build_features(
                 on='timestamp',
                 direction='backward'
             )
+            if name == 'hyperliquid' and 'hl_open_interest' in df:
+                df['hl_open_interest_delta'] = df['hl_open_interest'].diff()
 
     # IV Rank: computed over the merged dvol column if Deribit data was joined
     if 'dvol' in df.columns:

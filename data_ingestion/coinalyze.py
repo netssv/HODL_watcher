@@ -1,6 +1,7 @@
 """Real open-interest history, preferring Coinalyze then Binance's free API."""
 
 import logging
+import time
 from datetime import datetime, timezone
 
 import pandas as pd
@@ -29,9 +30,15 @@ def get_coinalyze_data() -> pd.DataFrame:
     """Fetch real BTC perpetual open interest; never manufacture a history."""
     if COINALYZE_API_KEY:
         def fetch_coinalyze():
+            end = int(time.time())
             response = requests.get(
                 COINALYZE_URL,
-                params={"symbols": "BTCUSDT_PERP.A", "interval": "1hour"},
+                params={
+                    "symbols": "BTCUSDT_PERP.A",
+                    "interval": "1hour",
+                    "from": end - 500 * 3600,
+                    "to": end,
+                },
                 headers={"api_key": COINALYZE_API_KEY}, timeout=10,
             )
             response.raise_for_status()

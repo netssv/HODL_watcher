@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Minus, Square } from 'lucide-react';
 
-export function WidgetCard({ children, title, id, onHide, onMinimize, onMaximize, isMaximized }) {
+export function WidgetCard({ children, title, id, onHide, onMinimize, onMaximize, isMaximized, locked }) {
   // Inject flex & height styles to ensure child wrapper divs stretch to fill the card
   const styledChildren = React.isValidElement(children)
     ? React.cloneElement(children, {
@@ -23,15 +23,19 @@ export function WidgetCard({ children, title, id, onHide, onMinimize, onMaximize
           <span style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{title}</span>
         </div>
         <div style={{ display: 'flex', gap: '0.2rem' }}>
-          <button onClick={() => onMinimize(id)} className="widget-close-btn" title="Minimize">
-            <Minus size={14} />
-          </button>
+          {!locked && (
+            <button onClick={() => onMinimize(id)} className="widget-close-btn" title="Minimize">
+              <Minus size={14} />
+            </button>
+          )}
           <button onClick={() => onMaximize(id)} className="widget-close-btn" title={isMaximized ? "Restore" : "Maximize"}>
             <Square size={12} />
           </button>
-          <button onClick={() => onHide(id)} className="widget-close-btn" title="Close widget">
-            <X size={14} />
-          </button>
+          {!locked && (
+            <button onClick={() => onHide(id)} className="widget-close-btn" title="Close widget">
+              <X size={14} />
+            </button>
+          )}
         </div>
       </div>
       <div className="widget-content-scrollable" style={{ flexGrow: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
@@ -49,6 +53,7 @@ export default function WidgetGrid({
   minimizeWidget,
   toggleMaximize,
   restoreWidget,
+  isSimpleMode,
   children 
 }) {
   const [isDesktop, setIsDesktop] = useState(window.innerWidth > 996);
@@ -61,7 +66,11 @@ export default function WidgetGrid({
 
   const childArray = React.Children.toArray(children);
   const activeChildren = childArray.filter(child => 
-    child && child.props && !hiddenWidgets.includes(child.props.id) && !minimizedWidgets.includes(child.props.id)
+    child && child.props && (
+      isSimpleMode && ['chart', 'composite'].includes(child.props.id)
+        ? true
+        : !hiddenWidgets.includes(child.props.id) && !minimizedWidgets.includes(child.props.id)
+    )
   );
 
   const maximizedChild = childArray.find(c => c && c.props && c.props.id === maximizedWidget);
@@ -82,6 +91,8 @@ export default function WidgetGrid({
             span = 6;
           } else if (child.props.id === 'chart') {
             minHeight = '650px';
+          } else if (child.props.id === 'composite') {
+            minHeight = '180px';
           } else if (child.props.id === 'projections' || child.props.id === 'validation' || child.props.id === 'indicators') {
             minHeight = '400px';
           }
@@ -102,6 +113,7 @@ export default function WidgetGrid({
                 onMinimize={minimizeWidget}
                 onMaximize={toggleMaximize}
                 isMaximized={false}
+                locked={isSimpleMode && ['chart', 'composite'].includes(child.props.id)}
               >
                 {child}
               </WidgetCard>
@@ -126,6 +138,7 @@ export default function WidgetGrid({
             onMinimize={minimizeWidget}
             onMaximize={toggleMaximize}
             isMaximized={true}
+            locked={isSimpleMode && ['chart', 'composite'].includes(maximizedChild.props.id)}
           >
             {maximizedChild}
           </WidgetCard>
