@@ -67,3 +67,16 @@ class IndicatorsResponse(BaseModel):
     interval: str
     data: List[IndicatorRecord]
     data_gaps: List[str]
+
+class PracticeContextPoint(BaseModel):
+    timestamp: str
+    fear_greed: int | None = None
+    fear_greed_classification: str | None = None
+    dxy: float | None = None
+
+class PracticeContextResponse(BaseModel):
+    data: List[PracticeContextPoint]
+    data_gaps: List[str]
+
+class HealthResponse(BaseModel):
+    status: str

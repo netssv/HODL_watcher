@@ -38,7 +38,7 @@ export default function App() {
     cooldownRemaining,
     showTrainModal, setShowTrainModal,
     gaps, error, lastFetchedTime, livePrice, signalLog,
-    fetchPrediction, handleTrain
+    fetchPrediction, handleTrain, onlineMode, refreshNotice
   } = usePredictData(playChime);
 
   const [sidebarCollapsed, toggleSidebar] = useSidebarCollapse();
@@ -77,6 +77,7 @@ export default function App() {
         )}
 
         <ErrorBanner error={error} />
+        {onlineMode && refreshNotice && <div className="banner" style={{ marginBottom: '0.75rem', color: 'var(--text-secondary)' }}>ℹ {refreshNotice}</div>}
         {showExplainers && (
           <GuideBanner
             isSimpleMode={isSimpleMode}

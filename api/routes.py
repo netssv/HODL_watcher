@@ -1,4 +1,6 @@
 import logging
+import os
+import time
 import pandas as pd
 from typing import Dict, Any, Optional
 from fastapi import APIRouter, HTTPException
@@ -7,9 +9,11 @@ from api.schemas import (
     DataResponseItem, DataResponse, FeatureCalculateRequest,
     FeatureCalculateResponse, TrainRequest, TrainResponse,
     PredictResponse, NewsInstructionsResponse, IndicatorsResponse
+    , PracticeContextResponse, PracticeContextPoint, HealthResponse
 )
 from api.services import fetch_all_sources
 from data_ingestion import binance_spot, okx, kraken, bybit
+from data_ingestion import fear_greed, dxy
 from features.builder import build_features
 from model.validation import prepare_target, run_walk_forward_validation
 from model.inference import fit_final_model, predict_probabilities
@@ -22,6 +26,13 @@ _LATEST_TRAINING_REPORT: Optional[Dict[str, Any]] = None
 _LATEST_MODEL = None
 _LATEST_FEATURE_NAMES: list[str] = []
 _WARMING_UP = False
+_PREDICTION_CACHE = None
+_PREDICTION_CACHE_AT = 0.0
+_PREDICTION_CACHE_TTL = 3600
+
+@router.get("/health", response_model=HealthResponse)
+def health():
+    return HealthResponse(status="ok")
 
 def warmup_training():
     """Called once at startup in a background thread."""
@@ -143,7 +154,13 @@ def get_indicators(symbol: str = "BTCUSDT", interval: str = "1h", limit: int = 2
 
 @router.get("/predict", response_model=PredictResponse)
 def get_prediction(force_refresh: bool = False):
-    global _LATEST_TRAINING_REPORT, _LATEST_MODEL
+    global _LATEST_TRAINING_REPORT, _LATEST_MODEL, _PREDICTION_CACHE, _PREDICTION_CACHE_AT
+    # Online users share one server-side result. Do not let every browser
+    # refresh fan out into a full upstream refresh; force refresh is opt-in
+    # for maintenance only.
+    force_refresh = force_refresh and os.getenv("ALLOW_ONLINE_FORCE_REFRESH", "false").lower() == "true"
+    if not force_refresh and _PREDICTION_CACHE is not None and time.time() - _PREDICTION_CACHE_AT < _PREDICTION_CACHE_TTL:
+        return _PREDICTION_CACHE
     srcs, gaps = fetch_all_sources(limit=100, interval="1h", force_refresh=force_refresh)
     if srcs["spot_df"] is None or srcs["spot_df"].empty:
         raise HTTPException(status_code=503, detail="Spot market data unavailable.")
@@ -222,7 +239,9 @@ def get_prediction(force_refresh: bool = False):
     )
     payload["news"] = news_rows_out
     
-    return PredictResponse(payload=payload, data_gaps=list(set(gaps)))
+    _PREDICTION_CACHE = PredictResponse(payload=payload, data_gaps=list(set(gaps)))
+    _PREDICTION_CACHE_AT = time.time()
+    return _PREDICTION_CACHE
 
 
 @router.get("/news-instructions", response_model=NewsInstructionsResponse)
@@ -231,3 +250,26 @@ def get_news_instructions():
         instructions_for_agent="The agent must search for news of the last 24-48 hours regarding: Bitcoin, Federal Reserve policy / rate decisions, macro economic markers (CPI, employment rates), and report only factual, source-backed events.",
         keywords_to_search=["Bitcoin", "Fed rate decision", "CPI", "Inflation", "US Dollar Index"]
     )
+
+@router.get("/practice/context", response_model=PracticeContextResponse)
+def get_practice_context():
+    gaps = []
+    fg = dxy_df = None
+    try: fg = fear_greed.get_fear_greed_index(limit=0)
+    except Exception as exc: gaps.append(f"fear_greed: {exc}")
+    try: dxy_df = dxy.get_dxy(range_name="2y")
+    except Exception as exc: gaps.append(f"dxy: {exc}")
+    timestamps = set()
+    if fg is not None: timestamps.update(fg.index)
+    if dxy_df is not None: timestamps.update(dxy_df.index)
+    points = []
+    for ts in sorted(timestamps):
+        f = fg.asof(ts) if fg is not None and not fg.empty else None
+        d = dxy_df.asof(ts) if dxy_df is not None and not dxy_df.empty else None
+        points.append(PracticeContextPoint(
+            timestamp=ts.isoformat(),
+            fear_greed=int(f["value"]) if f is not None and pd.notna(f.get("value")) else None,
+            fear_greed_classification=str(f["classification"]) if f is not None and pd.notna(f.get("classification")) else None,
+            dxy=float(d["value"]) if d is not None and pd.notna(d.get("value")) else None,
+        ))
+    return PracticeContextResponse(data=points, data_gaps=gaps)

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { deriveStrategy } from '../utils.jsx';
 
 const API = import.meta.env.VITE_API_BASE_URL || '';
+const ONLINE_MODE = import.meta.env.VITE_DEPLOYMENT_MODE === 'online';
 const THROTTLE_MS = 5000;
 const CALIBRATION_CACHE_MS = 6 * 60 * 60 * 1000;
 const RECALIBRATION_COOLDOWN_MS = 15 * 60 * 1000;
@@ -50,6 +51,7 @@ export function usePredictData(playChime) {
   const [calibrationCache, setCalibrationCache] = useState({});
   const [cooldownUntil, setCooldownUntil] = useState(0);
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
+  const [refreshNotice, setRefreshNotice] = useState('');
 
   useEffect(() => {
     const update = () => setCooldownRemaining(Math.max(0, cooldownUntil - Date.now()));
@@ -60,12 +62,19 @@ export function usePredictData(playChime) {
 
   // Fetch data
   const fetchPrediction = async (force = false, refreshSources = force) => {
+    if (ONLINE_MODE && force) {
+      setRefreshNotice('Simulation: the shared server refreshes market data once per hour. Manual refresh is disabled online.');
+      return;
+    }
+    setRefreshNotice('');
     const now = Date.now();
     if (!force && lastFetchedTime && now - lastFetchedTime < THROTTLE_MS) return;
     setLoading(true); setError(null);
     try {
       // Refresh can also race model warmup; retry temporary 503 responses.
-      const res = await fetchWithRetry(`${API}/api/predict${refreshSources ? `?force_refresh=${Date.now()}` : ''}`);
+      const onlineForceDisabled = !import.meta.env.DEV;
+      const canRefreshSources = refreshSources && !onlineForceDisabled;
+      const res = await fetchWithRetry(`${API}/api/predict${canRefreshSources ? `?force_refresh=${Date.now()}` : ''}`);
       if (!res.ok) throw new Error(`Server error ${res.status}`);
       const data = await res.json();
       
@@ -163,5 +172,6 @@ export function usePredictData(playChime) {
     showTrainModal, setShowTrainModal,
     gaps, error, lastFetchedTime, livePrice, signalLog,
     fetchPrediction, handleTrain
+    , onlineMode: ONLINE_MODE, refreshNotice
   };
 }

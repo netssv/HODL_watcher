@@ -54,7 +54,7 @@ export default function CandlestickChart({ predictionData, thresholdPct, globalL
     });
     chartRef.current = chart;
     setChartVersion(v => v + 1); // triggers visible range subscription
-  }, [predictionData, thresholdPct, showTrendLines]);
+  }, [predictionData, thresholdPct]);
 
   const { rsiHeight, handleDragStart } = useRsiResize(rsiChartRef, mainRef, chartRef);
   const { ohlc, loading, err, candlesRef } = useChartData(timeframe, buildAll);
@@ -63,6 +63,12 @@ export default function CandlestickChart({ predictionData, thresholdPct, globalL
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart || !candlesRef.current?.length) return;
+
+    // Adding/removing a series makes Lightweight Charts recalculate its
+    // scales. Keep the user's current viewport; indicator toggles should only
+    // change what is drawn.
+    const timeRange = chart.timeScale().getVisibleLogicalRange();
+    const priceRange = chart.priceScale('right').getVisibleRange();
 
     Object.entries(emaSeriesRef.current).forEach(([p, ser]) => {
       if (!activeEMAs.includes(Number(p)) && ser) {
@@ -103,7 +109,31 @@ export default function CandlestickChart({ predictionData, thresholdPct, globalL
       try { rsiChartRef.current.remove(); } catch (_) {}
       rsiChartRef.current = null; rsiSeriesRef.current = null;
     }
-  }, [activeEMAs, showBB, showRSI, showVWAP, loading, timeframe]);
+
+    const restore = () => {
+      if (!chartRef.current) return;
+      if (timeRange) {
+        chartRef.current.timeScale().setVisibleLogicalRange(timeRange);
+        rsiChartRef.current?.timeScale().setVisibleLogicalRange(timeRange);
+      }
+      if (priceRange) chartRef.current.priceScale('right').setVisibleRange(priceRange);
+    };
+
+    // Series attachment and the RSI panel resize can each trigger another
+    // autoscale pass. Restore after those layout passes as well.
+    let frame = requestAnimationFrame(() => {
+      restore();
+      frame = requestAnimationFrame(() => {
+        restore();
+        frame = requestAnimationFrame(restore);
+      });
+    });
+    const timer = setTimeout(restore, 100);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(timer);
+    };
+  }, [activeEMAs, showBB, showRSI, showVWAP, loading, timeframe, chartVersion]);
 
   useEffect(() => {
     if (!chartRef.current) return;
@@ -171,13 +201,13 @@ export default function CandlestickChart({ predictionData, thresholdPct, globalL
     predLinesRef.current.forEach(({ line, color }) => {
       try { line.applyOptions({ color: showPredLines ? color : 'transparent' }); } catch (_) {}
     });
-  }, [showPredLines]);
+  }, [showPredLines, chartVersion]);
 
   useEffect(() => {
     trendLinesRef.current.forEach(({ line, color }) => {
       try { line.applyOptions({ color: showTrendLines ? color : 'transparent' }); } catch (_) {}
     });
-  }, [showTrendLines]);
+  }, [showTrendLines, chartVersion]);
 
   useEffect(() => {
     const chart = chartRef.current;

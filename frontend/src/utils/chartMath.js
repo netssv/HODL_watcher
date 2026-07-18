@@ -51,7 +51,16 @@ export function calcRSI(data, period = 14) {
 export function calcVWAP(data) {
   let sumPV = 0;
   let sumVol = 0;
+  let session = null;
   return data.map(d => {
+    // Crypto trades 24/7, so use UTC calendar days as deterministic VWAP
+    // sessions. A rolling cumulative VWAP changes when history is loaded.
+    const day = Math.floor(d.time / 86400);
+    if (day !== session) {
+      session = day;
+      sumPV = 0;
+      sumVol = 0;
+    }
     const typ = (d.high + d.low + d.close) / 3;
     const vol = d.volume ?? 0;
     sumPV += typ * vol;

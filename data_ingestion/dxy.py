@@ -14,14 +14,14 @@ URLS = (
 SOURCE_VERSION = "ice_dxy_yahoo"
 
 
-def get_dxy() -> pd.DataFrame:
+def get_dxy(range_name: str = "5d") -> pd.DataFrame:
     def fetch():
         last_error = None
         for url in URLS:
             try:
                 response = requests.get(
                     url,
-                    params={"range": "5d", "interval": "1d"},
+                    params={"range": range_name, "interval": "1d"},
                     headers={"User-Agent": "HODL-Watcher/1.0"},
                     timeout=10,
                 )
@@ -33,7 +33,7 @@ def get_dxy() -> pd.DataFrame:
                 last_error = exc
         raise RuntimeError(f"DXY quote unavailable: {last_error}")
 
-    raw = cached_fetch("dxy|DX-Y.NYB|5d|1d", 15 * 60, fetch)
+    raw = cached_fetch(f"dxy|DX-Y.NYB|{range_name}|1d", 24 * 3600, fetch)
     result = raw["chart"]["result"][0]
     rows = [
         {"timestamp": pd.to_datetime(ts, unit="s", utc=True), "value": close}
