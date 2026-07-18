@@ -6,14 +6,14 @@ export function DerivativesGroup({ rsi, fr, ls, liq, opt, hl }) {
     <IndicatorGroup title="Derivatives" cols="3">
       <IndicatorCard
         label="RSI 6/12/24"
-        value={rsi ? `${rsi['6'].toFixed(1)} / ${rsi['12'].toFixed(1)} / ${rsi['24'].toFixed(1)}` : 'N/A'}
+        value={rsi?.['6'] != null && rsi?.['12'] != null && rsi?.['24'] != null ? `${rsi['6'].toFixed(1)} / ${rsi['12'].toFixed(1)} / ${rsi['24'].toFixed(1)}` : 'N/A'}
         gloss={rsi && rsi['6'] > 70 ? 'All short windows overbought' : rsi && rsi['6'] < 30 ? 'Oversold — bounce possible' : 'Momentum neutral'}
         definition=">70 = overbought. <30 = oversold. All three rising confirms strengthening momentum."
       />
       <IndicatorCard
         label="Funding Rate"
         valueCls={fr?.value > 0 ? 'ind-value--up' : 'ind-value--down'}
-        value={fr ? `${(fr.value * 100).toFixed(4)}%` : 'N/A'}
+        value={fr?.value != null ? `${(fr.value * 100).toFixed(4)}%` : 'N/A'}
         trend={trendArrow(fr?.trend)}
         gloss={fr?.trend === 'rising' ? 'Longs paying more — crowd risk building' : fr?.trend === 'falling' ? 'Funding declining' : 'Stable'}
         definition="Perpetual futures fee paid every 8h. Positive = longs paying shorts."
@@ -21,7 +21,7 @@ export function DerivativesGroup({ rsi, fr, ls, liq, opt, hl }) {
       <IndicatorCard
         label="L/S Ratio"
         valueCls={ls?.value > 1 ? 'ind-value--up' : 'ind-value--down'}
-        value={ls ? ls.value.toFixed(2) : 'N/A'}
+        value={ls?.value != null ? ls.value.toFixed(2) : 'N/A'}
         trend={trendArrow(ls?.trend)}
         gloss={ls?.value > 1.2 ? 'Crowd bullish' : ls?.value < 0.8 ? 'Short squeeze fuel' : 'Balanced'}
         definition="Long/Short Ratio. Above 1.0 = more traders betting on a rise."
