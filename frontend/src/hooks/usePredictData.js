@@ -8,21 +8,28 @@ const CALIBRATION_CACHE_MS = 6 * 60 * 60 * 1000;
 const RECALIBRATION_COOLDOWN_MS = 15 * 60 * 1000;
 const HORIZON_SETTINGS = { 4: 0.003, 24: 0.005, 72: 0.01 };
 
-// Poll /api/predict until it succeeds. Silently retries 503 (model warming up).
-// Max wait: 30 attempts x 10s = 5 minutes.
-async function fetchWithRetry(url, retries = 30, delayMs = 10000) {
+// Give the backend a short warm-up window, then fail visibly instead of
+// leaving the refresh control spinning for several minutes.
+async function fetchWithRetry(url, retries = 6, delayMs = 5000) {
   for (let i = 0; i < retries; i++) {
+    let timeout;
     try {
-      const res = await fetch(url);
+      const controller = new AbortController();
+      timeout = setTimeout(() => controller.abort(), 30000);
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeout);
       if (res.ok) return res;
       if (res.status !== 503) throw new Error(`Server error ${res.status}`);
-      // 503 = model still warming up, keep polling silently
+      // 503 = model still warming up; retry briefly.
     } catch (e) {
-      if (i === retries - 1) throw new Error('Backend unreachable. Run ./dev.sh');
+      if (timeout) clearTimeout(timeout);
+      if (i === retries - 1) throw new Error(e.name === 'AbortError'
+        ? 'Backend request timed out. Check the local server or Cloud Run logs.'
+        : 'Backend unreachable. Run ./dev.sh');
     }
     await new Promise(r => setTimeout(r, delayMs));
   }
-  throw new Error('Model warmup exceeded 5 minutes.');
+  throw new Error('Model is still warming up. Try again in a moment.');
 }
 
 
