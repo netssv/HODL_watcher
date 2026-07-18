@@ -11,7 +11,7 @@ export function ErrorBanner({ error }) {
       <ShieldAlert className="w-4 h-4 flex-shrink-0" style={{ marginTop: 2, color: '#f43f5e' }} />
       <div>
         <strong>Connection Issue:</strong>{' '}
-        {production ? 'Cloud Run backend is unavailable.' : 'Start backend using:'}{' '}
+        {production ? `Cloud Run request failed: ${error}` : 'Start backend using:'}{' '}
         {!production &&
         <code style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.90rem' }}>
           .venv/bin/uvicorn api.app:app --reload
