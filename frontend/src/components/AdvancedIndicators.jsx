@@ -4,7 +4,7 @@ import { DerivativesGroup, NetworkGroup, SentimentGroup, MacroGroup } from './Sn
 import { MicrostructureGroup } from './MicrostructureGroup.jsx';
 
 const POLL_MS = 120_000; // 2-minute refresh for microstructure data
-const API_BASE = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:8000' : '');
+const API_BASE = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://127.0.0.1:8000' : '');
 
 export function AdvancedIndicators({ snapshot }) {
   const [micro, setMicro] = useState({ data: null, loading: true, error: null });

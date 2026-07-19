@@ -64,7 +64,7 @@
 
 /* ── 24. MINIMIZED PILL ── */
 .train-modal-pill {
-  position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999;
+  position: fixed; bottom: max(1.5rem, env(safe-area-inset-bottom)); right: max(1.5rem, env(safe-area-inset-right)); z-index: 9999;
   display: flex; align-items: center; gap: 0.5rem; padding: 0.45rem 0.75rem 0.45rem 0.6rem;
   background: #0d1117; border: 1px solid rgba(16,185,129,0.35); border-radius: 999px;
   font-size: 0.88rem; font-weight: 600; color: var(--text-secondary); cursor: pointer;
@@ -78,3 +78,14 @@
 }
 .train-modal-pill-hide:hover { background: rgba(244,63,94,0.15); color: var(--down-color); }
 .simple-mode .train-modal-pill-hide { background: #f1f5f9; border-color: #e2e8f0; color: #94a3b8; }
+
+@media (max-width: 639px) {
+  .train-modal-footer { align-items: flex-start; flex-wrap: wrap; }
+  .train-modal-footer-note { min-width: 0; }
+  .train-modal-pill {
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: max(0.75rem, env(safe-area-inset-bottom));
+    justify-content: space-between;
+  }
+}

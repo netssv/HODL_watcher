@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { deriveStrategy } from '../utils.jsx';
 
-const API = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:8000' : '');
+const API = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://127.0.0.1:8000' : '');
 const ONLINE_MODE = import.meta.env.VITE_DEPLOYMENT_MODE === 'online';
 const THROTTLE_MS = 5000;
 const CALIBRATION_CACHE_MS = 6 * 60 * 60 * 1000;
@@ -10,12 +10,12 @@ const HORIZON_SETTINGS = { 4: 0.003, 24: 0.005, 72: 0.01 };
 
 // Give the backend a short warm-up window, then fail visibly instead of
 // leaving the refresh control spinning for several minutes.
-async function fetchWithRetry(url, retries = 6, delayMs = 5000) {
+async function fetchWithRetry(url, retries = 4, delayMs = 3000) {
   for (let i = 0; i < retries; i++) {
     let timeout;
     try {
       const controller = new AbortController();
-      timeout = setTimeout(() => controller.abort(), 30000);
+      timeout = setTimeout(() => controller.abort(), 15000);
       const res = await fetch(url, { signal: controller.signal });
       clearTimeout(timeout);
       if (res.ok) return res;
@@ -24,8 +24,8 @@ async function fetchWithRetry(url, retries = 6, delayMs = 5000) {
     } catch (e) {
       if (timeout) clearTimeout(timeout);
       if (i === retries - 1) throw new Error(e.name === 'AbortError'
-        ? 'Backend request timed out. Check the local server or Cloud Run logs.'
-        : 'Backend unreachable. Run ./dev.sh');
+        ? 'Backend request timed out. Start it with: .venv/bin/uvicorn api.app:app --reload'
+        : 'Backend unreachable. Start it with: .venv/bin/uvicorn api.app:app --reload');
     }
     await new Promise(r => setTimeout(r, delayMs));
   }

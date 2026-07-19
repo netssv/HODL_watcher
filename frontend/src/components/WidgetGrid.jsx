@@ -124,8 +124,8 @@ export default function WidgetGrid({
 
       {maximizedChild && createPortal(
         <div style={{
-          position: 'fixed', top: 0, left: 0,
-          width: '100dvw', height: '100dvh',
+          position: 'fixed', inset: 0,
+          width: 'auto', height: 'auto',
           zIndex: 9999,
           backgroundColor: '#0a0c10',
           display: 'flex', flexDirection: 'column',

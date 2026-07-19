@@ -39,6 +39,7 @@ app = FastAPI(
 _extra_origin = os.environ.get("ALLOWED_ORIGIN", "")
 _origins = [
     "http://localhost:5173",           # local Vite dev server
+    "http://127.0.0.1:5173",           # local Vite dev server via loopback IP
     "https://hodl-watcher.vercel.app", # production Vercel URL (update if renamed)
 ]
 if _extra_origin:

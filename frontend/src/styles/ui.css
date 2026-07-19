@@ -27,7 +27,7 @@
 .ohlc-label { font-weight: 700; color: var(--text-muted); margin-right: 0.25rem; }
 
 /* ── 21c. CROSSHAIR TOOLTIP ── */
-.crosshair-tooltip { position: absolute; top: 8px; left: 8px; z-index: 10; pointer-events: none; background: rgba(10,12,16,0.92); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.35rem 0.6rem; backdrop-filter: blur(6px); box-shadow: 0 4px 16px rgba(0,0,0,0.5); animation: fade-in-up 0.1s ease; min-width: 260px; }
+.crosshair-tooltip { position: absolute; top: 8px; left: 8px; z-index: 10; pointer-events: none; background: rgba(10,12,16,0.92); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.35rem 0.6rem; backdrop-filter: blur(6px); box-shadow: 0 4px 16px rgba(0,0,0,0.5); animation: fade-in-up 0.1s ease; min-width: 0; max-width: calc(100% - 1rem); box-sizing: border-box; }
 .crosshair-tooltip__time { display: block; font-size: 0.95rem; color: var(--text-muted); font-family: var(--text-mono); border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 0.25rem; margin-bottom: 0.3rem; }
 .crosshair-tooltip__ohlc { display: flex; align-items: center; gap: 0.65rem; }
 .crosshair-tooltip__cell { display: flex; align-items: baseline; gap: 0.2rem; }
@@ -36,7 +36,7 @@
 .crosshair-tooltip__change { font-family: var(--text-mono); font-size: 0.82rem; margin-left: auto; }
 
 /* ── 21d. INDICATOR LEGEND ── */
-.indicator-legend { position: absolute; top: 8px; right: 60px; z-index: 9; pointer-events: none; display: flex; gap: 0.5rem; }
+.indicator-legend { position: absolute; top: 8px; right: 60px; z-index: 9; pointer-events: none; display: flex; gap: 0.5rem; max-width: calc(100% - 70px); overflow: hidden; }
 .indicator-legend__item { display: flex; align-items: center; gap: 0.3rem; font-size: 0.95rem; font-family: var(--text-mono); color: var(--leg-color, var(--text-secondary)); background: rgba(10,12,16,0.6); padding: 0.15rem 0.4rem; border-radius: 3px; border-left: 2px solid var(--leg-color, rgba(255,255,255,0.2)); }
 .indicator-legend__swatch { width: 14px; height: 2px; background: var(--leg-color, var(--text-secondary)); }
 .indicator-legend__swatch--dashed { background: repeating-linear-gradient(90deg, var(--leg-color) 0px, var(--leg-color) 4px, transparent 4px, transparent 6px); }

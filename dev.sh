@@ -116,7 +116,7 @@ check_node() {
     echo "    https://github.com/nvm-sh/nvm"
     exit 1
   fi
-  if [[ ! -d "$ROOT/frontend/node_modules" ]]; then
+  if [[ ! -x "$ROOT/frontend/node_modules/.bin/vite" ]]; then
     warn "node_modules missing. Installing frontend deps..."
     (cd "$ROOT/frontend" && $NPM_CMD install --silent)
   fi
@@ -151,7 +151,7 @@ start_frontend() {
   check_node
   kill_port 5173
   log "Starting Vite frontend..."
-  (cd "$ROOT/frontend" && VITE_API_PROXY_TARGET=http://127.0.0.1:8000 $NPM_CMD run dev -- --host 127.0.0.1 2>&1 \
+  (cd "$ROOT/frontend" && VITE_API_PROXY_TARGET=http://127.0.0.1:8000 ./node_modules/.bin/vite --host 127.0.0.1 2>&1 \
     | sed "s/^/$(printf "${MAGENTA}[frontend]${RESET} ")/") &
   FRONTEND_PID=$!
   wait_for_port 5173 "Frontend"

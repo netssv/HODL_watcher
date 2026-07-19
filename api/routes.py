@@ -163,6 +163,12 @@ def get_indicators(symbol: str = "BTCUSDT", interval: str = "1h", limit: int = 2
 @router.get("/predict", response_model=PredictResponse)
 def get_prediction(force_refresh: bool = False):
     global _LATEST_TRAINING_REPORT, _LATEST_MODEL, _PREDICTION_CACHE, _PREDICTION_CACHE_AT
+    # Do this before contacting any upstream provider.  The startup training
+    # runs in a background thread, so a browser request should get a quick
+    # retryable response instead of waiting on every external data source.
+    if _WARMING_UP or _LATEST_TRAINING_REPORT is None or _LATEST_MODEL is None:
+        raise HTTPException(status_code=503, detail="Model warming up, retry in a moment.")
+
     # Online users share one server-side result. Do not let every browser
     # refresh fan out into a full upstream refresh; force refresh is opt-in
     # for maintenance only.
@@ -178,9 +184,6 @@ def get_prediction(force_refresh: bool = False):
            for field in ("liquidation_dist_upper", "liquidation_dist_lower")):
         gaps.append("liquidation_proximity: unavailable")
     
-    if _WARMING_UP or _LATEST_TRAINING_REPORT is None or _LATEST_MODEL is None:
-        raise HTTPException(status_code=503, detail="Model warming up, retry in a moment.")
-
     probabilities = predict_probabilities(_LATEST_MODEL, _LATEST_FEATURE_NAMES, latest_row)
     
     walls = []
