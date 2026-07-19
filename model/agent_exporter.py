@@ -56,6 +56,25 @@ def export_agent_payload(
     
     # Optional provider metrics: preserve missing values instead of presenting zero as data.
     liq_upper, liq_lower = _f('liquidation_dist_upper'), _f('liquidation_dist_lower')
+    # Cloud Run may have the heatmap buckets but not the derived feature
+    # columns. Keep the estimate visible by deriving proximity from the
+    # strongest bucket on each side of the current price.
+    if (liq_upper is None or liq_lower is None) and liq_heatmap and price:
+        for key, direction in (("short_buckets", "upper"), ("long_buckets", "lower")):
+            buckets = liq_heatmap.get(key) or []
+            candidates = [
+                b for b in buckets
+                if b.get("price") is not None and b.get("notionalUSD") is not None
+                and ((direction == "upper" and b["price"] > price)
+                     or (direction == "lower" and b["price"] < price))
+            ]
+            if candidates:
+                strongest = max(candidates, key=lambda b: float(b.get("notionalUSD", 0)))
+                distance = abs(float(strongest["price"]) / price - 1)
+                if direction == "upper" and liq_upper is None:
+                    liq_upper = distance
+                elif direction == "lower" and liq_lower is None:
+                    liq_lower = distance
     dvol, skew_25d, put_call = _f('dvol'), _f('skew_25d'), _f('put_call_ratio')
     exchange_flow, volume_proxy = _f('exchange_net_flow'), _f('etf_net_flow')
 

@@ -257,6 +257,17 @@ def get_open_interest(symbol: str = "BTCUSDT") -> dict:
         ),
     )
 
+    def _nearest_distance(buckets, above):
+        candidates = [
+            b for b in buckets
+            if (b["price"] > current_price if above else b["price"] < current_price)
+            and b["notionalUSD"] > 0
+        ]
+        if not candidates:
+            return None
+        strongest = max(candidates, key=lambda b: b["notionalUSD"])
+        return abs(strongest["price"] / current_price - 1)
+
     return {
         "open_interest": float(raw.get("openInterest", 0)),
         "symbol": raw.get("symbol", symbol),
@@ -459,6 +470,8 @@ def get_liq_heatmap_data(
         "current_price": current_price,
         "long_pct": long_pct,
         "short_pct": short_pct,
+        "upper": _nearest_distance(short_buckets, above=True),
+        "lower": _nearest_distance(long_buckets, above=False),
         "fetched_at": datetime.now(timezone.utc).isoformat(),
         "source": "binance_public_open_interest",
         "data_type": "estimated_liquidation_levels",

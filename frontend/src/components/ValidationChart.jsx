@@ -13,12 +13,20 @@ export function ValidationChart({ trainingReport }) {
   const folds = trainingReport?.folds || [];
   const baselines = overall.baselines || {};
   const trading = overall.trading_metrics || overall.trading;
-  const data = folds.map(f => ({
+  const foldData = folds.map(f => ({
     fold: `F${f.fold}`,
     Model: Number((f.accuracy * 100).toFixed(1)),
     Majority: Number((f.majority_baseline * 100).toFixed(1)),
     Persistence: Number((f.persistence_baseline * 100).toFixed(1)),
   }));
+  // Older Cloud Run deployments may return aggregate validation metrics but
+  // omit fold details. Show the aggregate instead of hiding a valid report.
+  const data = foldData.length ? foldData : overall.mean_accuracy != null ? [{
+    fold: 'Aggregate',
+    Model: Number((overall.mean_accuracy * 100).toFixed(1)),
+    Majority: Number(((baselines.mean_majority_class ?? 0) * 100).toFixed(1)),
+    Persistence: Number(((baselines.mean_persistence ?? 0) * 100).toFixed(1)),
+  }] : [];
   const status = overall.accuracy_vs_naive_baseline || 'not evaluated';
   const statusColor = status === 'better' ? '#34d399' : status === 'worse' ? '#f87171' : '#fbbf24';
   const classRows = ['down', 'sideways', 'up'].map(label => {
@@ -61,10 +69,10 @@ export function ValidationChart({ trainingReport }) {
             <Metric label="Test folds" value={`${meta.n_folds || data.length} · ${meta.horizon_periods ?? meta.horizon_hours ?? 24}h horizon`} />
           </div>
 
-          <div style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', lineHeight: 1.45 }}>
-            <strong style={{ color: 'var(--text-primary)' }}>How to read this:</strong> the solid line is the model;
-            it should consistently sit above both dashed baselines. The ± value is variation between historical test windows,
-            not a confidence guarantee for the next trade.
+            <div style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', lineHeight: 1.45 }}>
+              <strong style={{ color: 'var(--text-primary)' }}>How to read this:</strong> the solid line is the model;
+              it should consistently sit above both dashed baselines. The ± value is variation between historical test windows,
+              not a confidence guarantee for the next trade.{!foldData.length && ' Fold-level detail is not available from the current server response; this is the aggregate only.'}
           </div>
 
           <div style={{ height: '210px' }}>
