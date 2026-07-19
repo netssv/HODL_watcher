@@ -65,6 +65,13 @@ def test_prepare_target_direction_mapping():
     assert target.iloc[3] == 1
 
 
+def test_zscore_target_keeps_sideways_rows():
+    timestamps = pd.date_range("2025-01-01", periods=60, freq="h", tz="UTC")
+    close = 100 + np.sin(np.linspace(0, 1, len(timestamps))) * 0.01
+    _, target = prepare_target(pd.DataFrame({"close": close}, index=timestamps), horizon=1, z_threshold=1_000_000.0)
+    assert set(target.unique()) == {0}
+
+
 def test_walk_forward_validation_structure():
     features_df, target = _generate_test_dataset(150)
     
@@ -93,3 +100,14 @@ def test_walk_forward_validation_structure():
         assert "accuracy" in fold
         assert "confusion_matrix" in fold
         assert len(fold["confusion_matrix"]) == 3  # 3x3 classification matrix (down, sideways, up)
+
+
+def test_walk_forward_can_exclude_dominant_features():
+    features_df, target = _generate_test_dataset(150)
+    report = run_walk_forward_validation(
+        features_df, target, n_folds=8, horizon=4, n_estimators=10,
+        max_depth=3, exclude_features=("rsi_24", "ma_99", "ema_200"),
+    )
+    assert report["metadata"]["excluded_features"] == ["rsi_24", "ma_99", "ema_200"]
+    assert all(item["feature"] not in {"rsi_24", "ma_99", "ema_200"}
+               for item in report["feature_importances"])

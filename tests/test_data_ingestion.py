@@ -110,6 +110,12 @@ def _fake_fear_greed_response():
     }
 
 
+def _fake_coinalyze_response():
+    return [{"symbol": "BTCUSDT_PERP.A", "history": [
+        {"t": 1_735_689_600, "o": 100, "h": 120, "l": 90, "c": 110},
+    ]}]
+
+
 def _fake_fred_response():
     """Generate FRED observations response."""
     return {
@@ -341,6 +347,15 @@ class TestSchemaValidation:
         expected_cols = {"price", "market_cap", "total_volume"}
         assert expected_cols.issubset(set(df.columns))
         assert df.index.name == "timestamp"
+
+    def test_coinalyze_uses_oi_close_and_usd_conversion(self):
+        with _patch_cached_fetch("coinalyze", _fake_coinalyze_response()), \
+             patch("data_ingestion.coinalyze.COINALYZE_API_KEY", "test-key"):
+            from data_ingestion.coinalyze import get_coinalyze_data
+            df = get_coinalyze_data()
+
+        assert df.iloc[0]["open_interest"] == 110
+        assert df.attrs["source"] == "coinalyze"
 
 
 # ===================================================================

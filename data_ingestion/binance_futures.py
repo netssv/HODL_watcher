@@ -332,6 +332,12 @@ def _nearest_liq_distance(buckets: list[dict], current_price: float, above: bool
     return abs(strongest["price"] / current_price - 1)
 
 
+# Compatibility name for older callers; keep one implementation of the
+# liquidation-distance calculation so the fallback cannot drift or fail with
+# a missing-name error.
+_nearest_distance = _nearest_liq_distance
+
+
 def get_liq_heatmap_data(
     symbol: str = "BTCUSDT",
     oi_limit: int = 48,

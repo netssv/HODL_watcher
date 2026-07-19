@@ -16,6 +16,7 @@ from features.indicators import (
     compute_macd,
     compute_bollinger_bands,
     compute_atr,
+    compute_adx,
     compute_vwap,
     compute_realized_volatility,
     compute_iv_rank
@@ -63,6 +64,16 @@ def build_features(
         ema = df['close'].ewm(span=period, adjust=False).mean()
         df[f'ema_{period}'] = ema
         df[f'ema_{period}_slope'] = ema.pct_change()
+
+    # Trend strength/alignment distinguish an extended trend from a range.
+    df['adx_14'] = compute_adx(df, 14)
+    df['ema_trend_alignment'] = (
+        (df['ema_9'] > df['ema_21']).astype(int)
+        + (df['ema_21'] > df['ema_50']).astype(int)
+        + (df['ema_50'] > df['ema_100']).astype(int)
+        + (df['ema_100'] > df['ema_200']).astype(int)
+        - 2
+    )
     
     df['atr'] = compute_atr(df)
     
@@ -74,8 +85,8 @@ def build_features(
     # Regime & Multi-timeframe proxies
     df['market_regime'] = compute_market_regime(df)
     # 4h proxy (close vs close 4 periods ago if hourly)
-    df['momentum_4h'] = df['close'] / df['close'].shift(4) - 1
-    df['momentum_24h'] = df['close'] / df['close'].shift(24) - 1
+    df['momentum_4h'] = df['close'].pct_change(4)
+    df['momentum_24h'] = df['close'].pct_change(24)
 
     # 2. Volume relative to MA
     df['vol_ma_20'] = df['volume'].rolling(window=20, center=False).mean()
@@ -97,6 +108,12 @@ def build_features(
     # Volatility regime: ratio of short-term to long-term realized vol
     # <0.7 = compression (breakout likely), >1.5 = already moved (reversal risk)
     df['rv_ratio'] = df['realized_vol_4'] / (df['realized_vol_24'] + 1e-9)
+    # Interactions let a tree learn overbought-in-trend versus overbought-in-range.
+    df['rsi_24_x_trend'] = ((df['rsi_24'] - 50) / 50) * df['ema_trend_alignment']
+    df['dist_ma_99_x_trend'] = df['dist_ma_99'] * df['ema_trend_alignment']
+    df['taker_buy_sell_ratio_6h'] = df['taker_buy_sell_ratio'].rolling(6, center=False).mean()
+    df['cvd_24_slope_6h'] = df['cvd_24'].diff(6)
+    df['volume_delta_trend_6h'] = df['volume_delta'].rolling(6, center=False).mean()
 
     # Convert index to a column to allow merge_asof
     df = df.reset_index()

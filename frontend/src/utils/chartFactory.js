@@ -147,9 +147,9 @@ export function applyCandles(chart, data, predictionData, thresholdPct) {
     size:     1,
   }]);
 
-  // One clearly translucent candle marks the model's projected horizon. It is
-  // intentionally separate from historical data so forecast is never mistaken
-  // for an observed market candle.
+  // Draw the forecast as a path, not a synthetic candle. A second candle at
+  // the edge of the historical series is visually easy to mistake for live
+  // data and causes the direction/forecast markers to overlap.
   const horizonHours = predictionData.validation_summary?.horizon_hours
     ?? predictionData.validation_summary?.horizon_periods
     ?? predictionData.meta?.horizon_hours
@@ -159,21 +159,28 @@ export function applyCandles(chart, data, predictionData, thresholdPct) {
   const futureTime = lastCandle.time + horizonHours * 3600;
   const move = thresholdPct * (0.65 + prob * 0.35);
   const projectedClose = dir === 'up' ? price * (1 + move) : dir === 'down' ? price * (1 - move) : price;
-  const projectedHigh = Math.max(price, projectedClose) * (1 + move * 0.35);
-  const projectedLow = Math.min(price, projectedClose) * (1 - move * 0.35);
   const projectionColor = dir === 'up' ? 'rgba(63,118,101,0.42)' : dir === 'down' ? 'rgba(198,93,75,0.42)' : 'rgba(167,163,155,0.42)';
-  const projection = chart.addSeries(CandlestickSeries, {
-    upColor: projectionColor, downColor: projectionColor,
-    borderUpColor: projectionColor, borderDownColor: projectionColor,
-    wickUpColor: projectionColor, wickDownColor: projectionColor,
-    priceLineVisible: false, lastValueVisible: false,
+  const projection = chart.addSeries(LineSeries, {
+    color: projectionColor,
+    lineWidth: 2,
+    lineStyle: STYLE_DASHED,
+    priceLineVisible: false,
+    lastValueVisible: false,
+    crosshairMarkerVisible: false,
+    title: `${horizonHours}h forecast`,
   });
-  projection.setData([{ time: futureTime, open: price, high: projectedHigh, low: projectedLow, close: projectedClose }]);
+  projection.setData([
+    { time: lastCandle.time, value: price },
+    { time: futureTime, value: projectedClose },
+  ]);
   createSeriesMarkers(projection, [{
     time: futureTime,
-    position: dir === 'down' ? 'aboveBar' : 'belowBar',
+    // Use the opposite lane from the direction marker on the last candle so
+    // DOWN/UP probability text cannot collide with the forecast label.
+    position: dir === 'down' ? 'belowBar' : 'aboveBar',
     color: projectionColor,
-    shape: 'circle',
+    // Point back toward the projected endpoint from the opposite label lane.
+    shape: dir === 'down' ? 'arrowUp' : dir === 'up' ? 'arrowDown' : 'circle',
     text: `${horizonHours}h forecast`,
     size: 1,
   }]);

@@ -32,10 +32,12 @@ def prepare_target(
             vol_window, center=False, min_periods=vol_window
         ).std().replace(0, np.nan)
         z_return = price_change / realized_vol
-        target = pd.Series(np.nan, index=df.index, dtype=float)
+        # Keep ordinary moves as sideways.  Dropping them silently turned this
+        # into a two-class large-move classifier despite the public schema.
+        target = pd.Series(0, index=df.index, dtype=float)
         target[z_return > z_threshold] = 1
         target[z_return < -z_threshold] = -1
-        valid_mask = price_change.notna() & target.notna()
+        valid_mask = price_change.notna() & realized_vol.notna()
         return df[valid_mask], target[valid_mask].astype(int)
     else:
         target = pd.Series(0, index=df.index, dtype=int)

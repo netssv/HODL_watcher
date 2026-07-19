@@ -24,6 +24,7 @@ def run_walk_forward_validation(
     n_estimators: int = 200,
     max_depth: int = 6,
     random_state: int = 42,
+    exclude_features: tuple[str, ...] = (),
 ) -> Dict[str, Any]:
     """
     Execute walk-forward validation with expanding train window and embargo gap.
@@ -45,7 +46,7 @@ def run_walk_forward_validation(
     exclude_cols = {'open', 'high', 'low', 'close', 'volume', 'close_time'}
     feature_names = [
         col for col in df.columns 
-        if col not in exclude_cols and pd.api.types.is_numeric_dtype(df[col])
+        if col not in exclude_cols and col not in exclude_features and pd.api.types.is_numeric_dtype(df[col])
     ]
 
     importances_accum = np.zeros(len(feature_names))
@@ -199,6 +200,7 @@ def run_walk_forward_validation(
             "data_end": str(df.index.max()) if len(df) else None,
             "latest_test_end": str(df.index[min(n_samples - 1, initial_train_size + (n_valid - 1) * test_size + horizon + test_size - 1)]) if n_valid else None,
             "status": "validated" if n_valid >= 8 else "preliminary_fewer_than_8_folds",
+            "excluded_features": list(exclude_features),
         },
         "overall": {
             "mean_accuracy": mean_model_acc,

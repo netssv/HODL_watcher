@@ -1,4 +1,4 @@
-"""Real open-interest history, preferring Coinalyze then Binance's free API."""
+"""Real Coinalyze BTC perpetual open-interest history."""
 
 import logging
 import time
@@ -12,7 +12,6 @@ from .config import COINALYZE_API_KEY
 
 logger = logging.getLogger(__name__)
 COINALYZE_URL = "https://api.coinalyze.net/v1/open-interest-history"
-BINANCE_URL = "https://fapi.binance.com/futures/data/openInterestHist"
 
 
 def _frame(rows: list[dict], source: str) -> pd.DataFrame:
@@ -28,45 +27,29 @@ def _frame(rows: list[dict], source: str) -> pd.DataFrame:
 
 def get_coinalyze_data() -> pd.DataFrame:
     """Fetch real BTC perpetual open interest; never manufacture a history."""
-    if COINALYZE_API_KEY:
-        def fetch_coinalyze():
-            end = int(time.time())
-            response = requests.get(
-                COINALYZE_URL,
-                params={
-                    "symbols": "BTCUSDT_PERP.A",
-                    "interval": "1hour",
-                    "from": end - 500 * 3600,
-                    "to": end,
-                },
-                headers={"api_key": COINALYZE_API_KEY}, timeout=10,
-            )
-            response.raise_for_status()
-            return response.json()
+    if not COINALYZE_API_KEY:
+        logger.warning("COINALYZE_API_KEY not set; open interest is unavailable.")
+        return pd.DataFrame(columns=["open_interest"])
 
-        try:
-            raw = cached_fetch("coinalyze_open_interest", 300, fetch_coinalyze)
-            history = raw[0].get("history", []) if isinstance(raw, list) and raw else []
-            return _frame(
-                [{"timestamp": x["t"] * 1000, "open_interest": x["v"]} for x in history],
-                "coinalyze",
-            )
-        except Exception as exc:
-            logger.warning("Coinalyze unavailable; using Binance OI history: %s", exc)
-
-    def fetch_binance():
+    def fetch_coinalyze():
+        end = int(time.time())
         response = requests.get(
-            BINANCE_URL, params={"symbol": "BTCUSDT", "period": "1h", "limit": 500}, timeout=10
+            COINALYZE_URL,
+            params={
+                "symbols": "BTCUSDT_PERP.A", "interval": "1hour",
+                "from": end - 500 * 3600, "to": end, "convert_to_usd": "true",
+            }, headers={"api_key": COINALYZE_API_KEY}, timeout=10,
         )
         response.raise_for_status()
         return response.json()
 
     try:
-        raw = cached_fetch("binance_open_interest_history|BTCUSDT|1h|500", 3600, fetch_binance)
+        raw = cached_fetch("coinalyze_open_interest", 300, fetch_coinalyze)
+        history = raw[0].get("history", []) if isinstance(raw, list) and raw else []
         return _frame(
-            [{"timestamp": x["timestamp"], "open_interest": x["sumOpenInterestValue"]} for x in raw],
-            "binance_futures",
+            [{"timestamp": x["t"] * 1000, "open_interest": x["c"]} for x in history],
+            "coinalyze",
         )
     except Exception as exc:
-        logger.warning("Binance OI history unavailable: %s", exc)
+        logger.warning("Coinalyze OI history unavailable: %s", exc)
         return pd.DataFrame(columns=["open_interest"])
