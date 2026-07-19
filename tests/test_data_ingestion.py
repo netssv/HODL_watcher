@@ -86,6 +86,18 @@ def _fake_long_short_response(n: int = 3):
     return entries
 
 
+def _fake_liq_heatmap_response(n: int = 3):
+    klines = _fake_klines_response(n)
+    return {
+        "oi": [
+            {"timestamp": candle[0], "sumOpenInterestValue": str(1_000_000 + i * 10_000)}
+            for i, candle in enumerate(klines)
+        ],
+        "klines": klines,
+        "ls": [{"longAccount": "0.6", "shortAccount": "0.4"}],
+    }
+
+
 def _fake_fear_greed_response():
     """Generate Fear & Greed Index response."""
     base_ts = int(datetime(2025, 1, 1, tzinfo=timezone.utc).timestamp())
@@ -149,6 +161,17 @@ def _patch_cached_fetch(module_path: str, return_value):
 # ===================================================================
 # TEST GROUP 1: No future data leakage
 # ===================================================================
+
+def test_liq_heatmap_keeps_calculated_levels():
+    with _patch_cached_fetch("binance_futures", _fake_liq_heatmap_response()):
+        from data_ingestion.binance_futures import get_liq_heatmap_data
+        heatmap = get_liq_heatmap_data()
+
+    assert heatmap["upper"] is not None
+    assert heatmap["lower"] is not None
+    assert any(bucket["notionalUSD"] > 0 for bucket in heatmap["long_buckets"])
+    assert any(bucket["notionalUSD"] > 0 for bucket in heatmap["short_buckets"])
+
 
 class TestNoFutureDataLeakage:
     """

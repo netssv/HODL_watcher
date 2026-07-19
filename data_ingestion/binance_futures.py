@@ -257,17 +257,6 @@ def get_open_interest(symbol: str = "BTCUSDT") -> dict:
         ),
     )
 
-    def _nearest_distance(buckets, above):
-        candidates = [
-            b for b in buckets
-            if (b["price"] > current_price if above else b["price"] < current_price)
-            and b["notionalUSD"] > 0
-        ]
-        if not candidates:
-            return None
-        strongest = max(candidates, key=lambda b: b["notionalUSD"])
-        return abs(strongest["price"] / current_price - 1)
-
     return {
         "open_interest": float(raw.get("openInterest", 0)),
         "symbol": raw.get("symbol", symbol),
@@ -329,6 +318,18 @@ MAINTENANCE_MARGIN = {
 }
 
 LIQ_BUCKETS = 60
+
+
+def _nearest_liq_distance(buckets: list[dict], current_price: float, above: bool) -> float | None:
+    candidates = [
+        bucket for bucket in buckets
+        if bucket["notionalUSD"] > 0
+        and (bucket["price"] > current_price if above else bucket["price"] < current_price)
+    ]
+    if not candidates:
+        return None
+    strongest = max(candidates, key=lambda bucket: bucket["notionalUSD"])
+    return abs(strongest["price"] / current_price - 1)
 
 
 def get_liq_heatmap_data(
@@ -433,10 +434,18 @@ def get_liq_heatmap_data(
         return {}
 
     current_price = entries[-1]["price"]
-    all_prices = [e["price"] for e in entries]
-    price_range = max(all_prices) - min(all_prices) if len(all_prices) > 1 else current_price * 0.1
-    p_low  = min(all_prices) - price_range * 0.5
-    p_high = max(all_prices) + price_range * 0.5
+    # Bucket the prices we actually calculate.  Using the recent candle range
+    # here discarded nearly every liquidation level during quiet markets.
+    long_prices = [
+        entry["price"] * (1 - 1 / leverage + MAINTENANCE_MARGIN[leverage])
+        for entry in entries for leverage in LEVERAGE_TIERS
+    ]
+    short_prices = [
+        entry["price"] * (1 + 1 / leverage - MAINTENANCE_MARGIN[leverage])
+        for entry in entries for leverage in LEVERAGE_TIERS
+    ]
+    p_low = min(*long_prices, current_price)
+    p_high = max(*short_prices, current_price)
 
     step = (p_high - p_low) / LIQ_BUCKETS
     if step <= 0:
@@ -470,8 +479,8 @@ def get_liq_heatmap_data(
         "current_price": current_price,
         "long_pct": long_pct,
         "short_pct": short_pct,
-        "upper": _nearest_distance(short_buckets, above=True),
-        "lower": _nearest_distance(long_buckets, above=False),
+        "upper": _nearest_liq_distance(short_buckets, current_price, above=True),
+        "lower": _nearest_liq_distance(long_buckets, current_price, above=False),
         "fetched_at": datetime.now(timezone.utc).isoformat(),
         "source": "binance_public_open_interest",
         "data_type": "estimated_liquidation_levels",
