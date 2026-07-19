@@ -195,7 +195,7 @@ export default function CandlestickChart({ predictionData, thresholdPct, globalL
   const visibleRange = useVisiblePriceRange(chartRef, candleSerRef, mainRef, chartVersion);
 
   // Custom hook handles moving historical bands + future horizontal active liquidation lines
-  useLiqMap(chartRef, candleSerRef, candlesRef, showLiqMap, displayPrice, predictionData);
+  useLiqMap(chartRef, candleSerRef, candlesRef, showLiqMap, displayPrice, predictionData, chartVersion);
 
   useEffect(() => {
     predLinesRef.current.forEach(({ line, color }) => {
