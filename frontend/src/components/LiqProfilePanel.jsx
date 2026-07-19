@@ -78,7 +78,8 @@ export function LiqProfilePanel({ predictionData, currentPrice, visibleRange }) 
   const snapshot = predictionData?.market_snapshot;
   const liq = snapshot?.liquidation_proximity;
   const heatmap = snapshot?.liq_heatmap;
-  if ((!liq && !heatmap) || !currentPrice) return null;
+  if (!currentPrice) return null;
+  const hasEstimate = Boolean(liq || heatmap?.long_buckets?.length || heatmap?.short_buckets?.length);
 
   // Sync to visible chart range; fallback while range hasn't resolved yet
   const high = visibleRange?.high ?? currentPrice * 1.06;
@@ -107,13 +108,18 @@ export function LiqProfilePanel({ predictionData, currentPrice, visibleRange }) 
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         flexShrink: 0,
       }}>
-        <span>OI Liq Estimate</span>
+        <span title={hasEstimate ? 'Estimated from public perpetual open-interest data.' : 'The estimate is temporarily unavailable.'}>OI Liq Estimate</span>
         <span style={{ color: '#fb923c', fontSize: '8px' }}>▲</span>
         <span style={{ color: '#10b981', fontSize: '8px' }}>▼</span>
       </div>
 
       {/* Rows — track visible price range */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {!hasEstimate && (
+          <div style={{ padding: '10px 8px', color: 'rgba(255,255,255,0.52)', fontSize: '10px', lineHeight: 1.4 }}>
+            Estimate unavailable. Retrying public market sources.
+          </div>
+        )}
         {buckets.map(({ price, intensity, isReal, volumeUSD }, i) => {
           const isShortLiq = upperLiq != null && Math.abs(price - upperLiq) / currentPrice < tickPct * 1.5;
           const isLongLiq  = lowerLiq != null && Math.abs(price - lowerLiq) / currentPrice < tickPct * 1.5;
@@ -122,7 +128,7 @@ export function LiqProfilePanel({ predictionData, currentPrice, visibleRange }) 
           const isHovered = hoveredIdx === i;
 
           // Max bar width expands on hover for dynamic effect
-          const barW = Math.max(isReal && volumeUSD === 0 ? 0 : 3, Math.round(intensity * (isHovered ? 85 : 60)));
+          const barW = !hasEstimate ? 0 : Math.max(isReal && volumeUSD === 0 ? 0 : 3, Math.round(intensity * (isHovered ? 85 : 60)));
           const color = heatColor(intensity);
 
           // Keep price labels hidden until the row is hovered to reduce chart noise.
@@ -177,7 +183,7 @@ export function LiqProfilePanel({ predictionData, currentPrice, visibleRange }) 
         padding: '3px 8px', borderTop: '1px solid rgba(255,255,255,0.06)',
         display: 'flex', justifyContent: 'space-between', flexShrink: 0,
       }}>
-        <span style={{ fontSize: '8px', color: 'rgba(255,255,255,0.42)' }}>Binance OI · estimated</span>
+        <span style={{ fontSize: '8px', color: 'rgba(255,255,255,0.42)' }}>{hasEstimate ? 'Public OI · estimated' : 'Awaiting OI data'}</span>
         <span style={{ fontSize: '8px', color: '#fb923c', fontWeight: 700 }}>⚡ Short</span>
         <span style={{ fontSize: '8px', color: '#10b981', fontWeight: 700 }}>Long ⚡</span>
       </div>

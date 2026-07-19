@@ -87,8 +87,7 @@ export function ChartHeader({ ohlc, price }) {
 
 // ── Main Chart Area ───────────────────────────────────────────────────────────
 export function MainChartArea({ mainRef, loading, err, activeEMAs, showBB, chartRef, predictionData, showLiqMap, displayPrice, visibleRange }) {
-  const snapshot = predictionData?.market_snapshot;
-  const hasProfile = showLiqMap && (snapshot?.liq_heatmap || snapshot?.liquidation_proximity) && !loading && !err;
+  const hasProfile = showLiqMap && !loading && !err;
 
   return (
     // Outer row: chart pane + liquidation profile panel side-by-side

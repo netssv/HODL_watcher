@@ -143,7 +143,11 @@ def fetch_all_sources(limit: int = 500, interval: str = "1h", force_refresh: boo
     try:
         liq_heatmap_dict = binance_futures.get_liq_heatmap_data(symbol="BTCUSDT")
         if not liq_heatmap_dict:
-            data_gaps.append("liq_heatmap: unavailable_from_binance_public_data")
+            liq_heatmap_dict = bybit.get_liq_heatmap_data(symbol="BTCUSDT")
+            if liq_heatmap_dict:
+                data_gaps.append("liq_heatmap: bybit_public_fallback")
+        if not liq_heatmap_dict:
+            data_gaps.append("liq_heatmap: unavailable_from_binance_or_bybit_public_data")
         if not liq_heatmap_dict or not all(
             pd.notna(liq_heatmap_dict.get(k)) for k in ("upper", "lower")
         ):

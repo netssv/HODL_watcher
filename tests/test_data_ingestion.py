@@ -173,6 +173,19 @@ def test_liq_heatmap_keeps_calculated_levels():
     assert any(bucket["notionalUSD"] > 0 for bucket in heatmap["short_buckets"])
 
 
+def test_bybit_liq_heatmap_keeps_calculated_levels():
+    raw = _fake_liq_heatmap_response()
+    raw["oi"] = [{"timestamp": item["timestamp"], "openInterest": "20"} for item in raw["oi"]]
+    raw["klines"] = [[*item[:7]] for item in raw["klines"]]
+    raw["ratio"] = [{"buyRatio": "0.6", "sellRatio": "0.4"}]
+    with _patch_cached_fetch("bybit", raw):
+        from data_ingestion.bybit import get_liq_heatmap_data
+        heatmap = get_liq_heatmap_data()
+
+    assert heatmap["source"] == "bybit_public_open_interest"
+    assert heatmap["upper"] is not None and heatmap["lower"] is not None
+
+
 class TestNoFutureDataLeakage:
     """
     Every DataFrame returned by a client must have ALL timestamps ≤ now.
