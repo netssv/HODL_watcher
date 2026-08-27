@@ -54,4 +54,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+def root():
+    return {
+        "name": "HODL Watcher API",
+        "status": "online",
+        "health": "/api/health",
+        "docs": "/docs",
+        "predict": "/api/predict",
+    }
+
+
 app.include_router(router)
+

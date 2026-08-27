@@ -57,29 +57,29 @@ def fetch_all_sources(limit: int = 500, interval: str = "1h", force_refresh: boo
         if spot_df.empty:
             raise RuntimeError("Empty response returned")
     except Exception as e:
-        data_gaps.append(f"binance_spot: {str(e)}; trying OKX fallback")
+        data_gaps.append(f"binance_spot: {str(e)}; trying Bybit fallback")
         try:
-            spot_df = okx.get_klines(symbol="BTCUSDT", interval=interval, limit=min(limit, 100))
+            spot_df = bybit.get_klines(symbol="BTCUSDT", interval=interval, limit=min(limit, 1000))
             if spot_df.empty:
                 raise RuntimeError("Empty response returned")
-            data_gaps.append("spot_source: okx_fallback")
-        except Exception as okx_error:
-            data_gaps.append(f"okx_spot: {str(okx_error)}; trying Kraken fallback")
+            data_gaps.append("spot_source: bybit_fallback")
+        except Exception as bybit_error:
+            data_gaps.append(f"bybit_spot: {str(bybit_error)}; trying Kraken fallback")
             try:
-                spot_df = kraken.get_klines(symbol="BTCUSDT", interval=interval, limit=limit)
+                spot_df = kraken.get_klines(symbol="BTCUSDT", interval=interval, limit=min(limit, 720))
                 if spot_df.empty:
                     raise RuntimeError("Empty response returned")
                 data_gaps.append("spot_source: kraken_fallback")
             except Exception as kraken_error:
-                data_gaps.append(f"kraken_spot: {str(kraken_error)}; trying Bybit fallback")
+                data_gaps.append(f"kraken_spot: {str(kraken_error)}; trying OKX fallback")
                 try:
-                    spot_df = bybit.get_klines(symbol="BTCUSDT", interval=interval, limit=limit)
+                    spot_df = okx.get_klines(symbol="BTCUSDT", interval=interval, limit=min(limit, 100))
                     if spot_df.empty:
                         raise RuntimeError("Empty response returned")
-                    data_gaps.append("spot_source: bybit_fallback")
-                except Exception as bybit_error:
+                    data_gaps.append("spot_source: okx_fallback")
+                except Exception as okx_error:
                     spot_df = None
-                    data_gaps.append(f"bybit_spot: {str(bybit_error)}")
+                    data_gaps.append(f"okx_spot: {str(okx_error)}")
     futures_df = None
     funding_df = None
     long_short_df = None
