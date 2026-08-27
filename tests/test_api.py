@@ -110,3 +110,29 @@ def test_news_instructions_endpoint():
     response = client.get("/api/news-instructions")
     assert response.status_code == 200
     assert "keywords_to_search" in response.json()
+
+
+def test_telemetry_endpoints():
+    # Test POST /api/telemetry/ping
+    post_res = client.post(
+        "/api/telemetry/ping",
+        json={
+            "source": "cron-keepalive",
+            "task": "Keep-Alive Ping",
+            "status": "ok",
+            "details": "Triggered by cron-job.org"
+        }
+    )
+    assert post_res.status_code == 200
+    data = post_res.json()
+    assert data["status"] == "success"
+    assert data["recorded"]["source"] == "cron-keepalive"
+
+    # Test GET /api/telemetry/logs
+    get_res = client.get("/api/telemetry/logs")
+    assert get_res.status_code == 200
+    logs = get_res.json()
+    assert logs["status"] == "online"
+    assert logs["count"] >= 1
+    assert logs["events"][0]["task"] == "Keep-Alive Ping"
+

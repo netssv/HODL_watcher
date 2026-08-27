@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "schema_version": "1.0.0",
-  "generated_at": "2026-08-27T00:16:59.019046+00:00",
+  "generated_at": "2026-08-27T00:50:52.730924+00:00",
   "project": {
     "name": "HODL Watcher",
     "version": "1.0.0",
@@ -148,12 +148,12 @@
     ]
   },
   "summary": {
-    "total_files": 178,
-    "total_loc": 23144,
+    "total_files": 179,
+    "total_loc": 23377,
     "layer_breakdown": {
       "root_config": {
-        "files": 18,
-        "loc": 3172
+        "files": 19,
+        "loc": 3329
       },
       "agents": {
         "files": 39,
@@ -173,11 +173,11 @@
       },
       "api": {
         "files": 5,
-        "loc": 725
+        "loc": 767
       },
       "tests": {
         "files": 8,
-        "loc": 979
+        "loc": 1005
       },
       "frontend": {
         "files": 67,
@@ -189,7 +189,7 @@
       },
       "docs": {
         "files": 5,
-        "loc": 2132
+        "loc": 2140
       }
     },
     "compliance": {
@@ -234,7 +234,7 @@
           },
           {
             "path": "api/routes.py",
-            "loc": 286,
+            "loc": 328,
             "layer": "api"
           },
           {
@@ -284,7 +284,7 @@
           },
           {
             "path": "docs/map_assets/embedded_map.js",
-            "loc": 1720,
+            "loc": 1728,
             "layer": "docs"
           }
         ]
@@ -320,8 +320,8 @@
       "path": ".gitignore",
       "name": ".gitignore",
       "layer": "root_config",
-      "loc": 38,
-      "size_bytes": 357,
+      "loc": 39,
+      "size_bytes": 387,
       "extension": ""
     },
     {
@@ -338,6 +338,14 @@
       "layer": "root_config",
       "loc": 57,
       "size_bytes": 2345,
+      "extension": ".md"
+    },
+    {
+      "path": "DEPLOYMENT_PRIVATE.md",
+      "name": "DEPLOYMENT_PRIVATE.md",
+      "layer": "root_config",
+      "loc": 148,
+      "size_bytes": 5281,
       "extension": ".md"
     },
     {
@@ -392,8 +400,8 @@
       "path": "project_map.json",
       "name": "project_map.json",
       "layer": "root_config",
-      "loc": 1720,
-      "size_bytes": 41535,
+      "loc": 1728,
+      "size_bytes": 41726,
       "extension": ".json"
     },
     {
@@ -1024,8 +1032,8 @@
       "path": "api/routes.py",
       "name": "routes.py",
       "layer": "api",
-      "loc": 286,
-      "size_bytes": 14589,
+      "loc": 328,
+      "size_bytes": 15950,
       "extension": ".py"
     },
     {
@@ -1064,8 +1072,8 @@
       "path": "tests/test_api.py",
       "name": "test_api.py",
       "layer": "tests",
-      "loc": 112,
-      "size_bytes": 3350,
+      "loc": 138,
+      "size_bytes": 4106,
       "extension": ".py"
     },
     {
@@ -1688,8 +1696,8 @@
       "path": "docs/map_assets/embedded_map.js",
       "name": "embedded_map.js",
       "layer": "docs",
-      "loc": 1720,
-      "size_bytes": 41567,
+      "loc": 1728,
+      "size_bytes": 41758,
       "extension": ".js"
     },
     {

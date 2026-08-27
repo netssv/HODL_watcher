@@ -1,9 +1,12 @@
 import logging
 import os
 import time
-import pandas as pd
+from collections import deque
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
+import pandas as pd
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 from api.schemas import (
     DataResponseItem, DataResponse, FeatureCalculateRequest,
@@ -22,6 +25,44 @@ from model.agent_exporter import export_agent_payload
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
 
+# Buffer en memoria: almacena los últimos 15 eventos sin saturar RAM
+telemetry_logs = deque(maxlen=15)
+
+
+class TelemetryPing(BaseModel):
+    source: str = "cron-keepalive"  # ej. "cron-keepalive", "n8n-mempool", "n8n-alert"
+    task: str = "Keep-Alive Ping"   # ej. "Render Ping", "Mempool Fee Check"
+    status: str = "ok"              # "ok", "warning", "error"
+    details: Optional[str] = None
+
+
+@router.post("/telemetry/ping")
+async def record_telemetry(payload: TelemetryPing):
+    """Endpoint para que cronjobs y n8n registren sus ejecuciones."""
+    entry = {
+        "id": len(telemetry_logs) + 1,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "source": payload.source,
+        "task": payload.task,
+        "status": payload.status,
+        "details": payload.details,
+    }
+    telemetry_logs.appendleft(entry)
+    return {"status": "success", "recorded": entry}
+
+
+@router.get("/telemetry/logs")
+async def get_telemetry():
+    """Endpoint que consultará el frontend para el Badge y el Feed."""
+    return {
+        "status": "online",
+        "service": "HODL Watcher API",
+        "server_time": datetime.now(timezone.utc).isoformat(),
+        "count": len(telemetry_logs),
+        "events": list(telemetry_logs),
+    }
+
+
 _LATEST_TRAINING_REPORT: Optional[Dict[str, Any]] = None
 _LATEST_MODEL = None
 _LATEST_FEATURE_NAMES: list[str] = []
@@ -33,6 +74,7 @@ _PREDICTION_CACHE_TTL = 3600
 @router.get("/health", response_model=HealthResponse)
 def health():
     return HealthResponse(status="ok")
+
 
 def warmup_training():
     """Called once at startup in a background thread."""
