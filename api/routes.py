@@ -5,7 +5,7 @@ from collections import deque
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 import pandas as pd
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from api.schemas import (
@@ -36,19 +36,36 @@ class TelemetryPing(BaseModel):
     details: Optional[str] = None
 
 
-@router.post("/telemetry/ping")
-async def record_telemetry(payload: TelemetryPing):
-    """Endpoint para que cronjobs y n8n registren sus ejecuciones."""
+@router.api_route("/telemetry/ping", methods=["GET", "POST"])
+async def record_telemetry(
+    request: Request,
+    source: str = "cron-keepalive",
+    task: str = "Keep-Alive Ping",
+    status: str = "ok",
+    details: Optional[str] = "Disponibilidad verificada"
+):
+    """Acepta GET (cronjobs sencillos) y POST (n8n o webhooks con JSON)."""
+    if request.method == "POST":
+        try:
+            body = await request.json()
+            source = body.get("source", source)
+            task = body.get("task", task)
+            status = body.get("status", status)
+            details = body.get("details", details)
+        except Exception:
+            pass
+
     entry = {
         "id": len(telemetry_logs) + 1,
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "source": payload.source,
-        "task": payload.task,
-        "status": payload.status,
-        "details": payload.details,
+        "source": source,
+        "task": task,
+        "status": status,
+        "details": details,
     }
     telemetry_logs.appendleft(entry)
     return {"status": "success", "recorded": entry}
+
 
 
 @router.get("/telemetry/logs")

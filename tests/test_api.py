@@ -128,11 +128,16 @@ def test_telemetry_endpoints():
     assert data["status"] == "success"
     assert data["recorded"]["source"] == "cron-keepalive"
 
+    # Test GET /api/telemetry/ping (cron-job.org simple ping)
+    get_ping_res = client.get("/api/telemetry/ping")
+    assert get_ping_res.status_code == 200
+    assert get_ping_res.json()["status"] == "success"
+
     # Test GET /api/telemetry/logs
     get_res = client.get("/api/telemetry/logs")
     assert get_res.status_code == 200
     logs = get_res.json()
     assert logs["status"] == "online"
-    assert logs["count"] >= 1
+    assert logs["count"] >= 2
     assert logs["events"][0]["task"] == "Keep-Alive Ping"
 

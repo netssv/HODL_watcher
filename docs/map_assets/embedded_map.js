@@ -1,7 +1,7 @@
 window.EMBEDDED_PROJECT_MAP = {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "schema_version": "1.0.0",
-  "generated_at": "2026-08-27T00:50:52.730924+00:00",
+  "generated_at": "2026-08-27T00:58:24.586528+00:00",
   "project": {
     "name": "HODL Watcher",
     "version": "1.0.0",
@@ -149,11 +149,11 @@ window.EMBEDDED_PROJECT_MAP = {
   },
   "summary": {
     "total_files": 179,
-    "total_loc": 23377,
+    "total_loc": 23410,
     "layer_breakdown": {
       "root_config": {
         "files": 19,
-        "loc": 3329
+        "loc": 3334
       },
       "agents": {
         "files": 39,
@@ -173,15 +173,15 @@ window.EMBEDDED_PROJECT_MAP = {
       },
       "api": {
         "files": 5,
-        "loc": 767
+        "loc": 784
       },
       "tests": {
         "files": 8,
-        "loc": 1005
+        "loc": 1010
       },
       "frontend": {
         "files": 67,
-        "loc": 9248
+        "loc": 9249
       },
       "scripts": {
         "files": 3,
@@ -189,13 +189,13 @@ window.EMBEDDED_PROJECT_MAP = {
       },
       "docs": {
         "files": 5,
-        "loc": 2140
+        "loc": 2145
       }
     },
     "compliance": {
       "rule_200_lines_limit": {
         "compliant": false,
-        "violations_count": 18,
+        "violations_count": 19,
         "violations": [
           {
             "path": ".agents/skills/caveman-compress/scripts/compress.py",
@@ -234,7 +234,7 @@ window.EMBEDDED_PROJECT_MAP = {
           },
           {
             "path": "api/routes.py",
-            "loc": 328,
+            "loc": 345,
             "layer": "api"
           },
           {
@@ -250,6 +250,11 @@ window.EMBEDDED_PROJECT_MAP = {
           {
             "path": "frontend/src/components/CandlestickChart.jsx",
             "loc": 239,
+            "layer": "frontend"
+          },
+          {
+            "path": "frontend/src/components/Header.jsx",
+            "loc": 201,
             "layer": "frontend"
           },
           {
@@ -284,7 +289,7 @@ window.EMBEDDED_PROJECT_MAP = {
           },
           {
             "path": "docs/map_assets/embedded_map.js",
-            "loc": 1728,
+            "loc": 1733,
             "layer": "docs"
           }
         ]
@@ -400,8 +405,8 @@ window.EMBEDDED_PROJECT_MAP = {
       "path": "project_map.json",
       "name": "project_map.json",
       "layer": "root_config",
-      "loc": 1728,
-      "size_bytes": 41726,
+      "loc": 1733,
+      "size_bytes": 41865,
       "extension": ".json"
     },
     {
@@ -1032,8 +1037,8 @@ window.EMBEDDED_PROJECT_MAP = {
       "path": "api/routes.py",
       "name": "routes.py",
       "layer": "api",
-      "loc": 328,
-      "size_bytes": 15950,
+      "loc": 345,
+      "size_bytes": 16436,
       "extension": ".py"
     },
     {
@@ -1072,8 +1077,8 @@ window.EMBEDDED_PROJECT_MAP = {
       "path": "tests/test_api.py",
       "name": "test_api.py",
       "layer": "tests",
-      "loc": 138,
-      "size_bytes": 4106,
+      "loc": 143,
+      "size_bytes": 4319,
       "extension": ".py"
     },
     {
@@ -1368,8 +1373,8 @@ window.EMBEDDED_PROJECT_MAP = {
       "path": "frontend/src/components/Header.jsx",
       "name": "Header.jsx",
       "layer": "frontend",
-      "loc": 200,
-      "size_bytes": 10833,
+      "loc": 201,
+      "size_bytes": 10849,
       "extension": ".jsx"
     },
     {
@@ -1696,8 +1701,8 @@ window.EMBEDDED_PROJECT_MAP = {
       "path": "docs/map_assets/embedded_map.js",
       "name": "embedded_map.js",
       "layer": "docs",
-      "loc": 1728,
-      "size_bytes": 41758,
+      "loc": 1733,
+      "size_bytes": 41897,
       "extension": ".js"
     },
     {
