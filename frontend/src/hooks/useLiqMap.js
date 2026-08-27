@@ -116,7 +116,7 @@ class LiquidationHeatmapRenderer {
 /**
  * Hook to render dynamic liquidation layers on the chart.
  */
-export function useLiqMap(chartRef, candleSerRef, candlesRef, showLiqMap, displayPrice, predictionData) {
+export function useLiqMap(chartRef, candleSerRef, candlesRef, showLiqMap, displayPrice, predictionData, chartVersion = 0) {
   const primitiveRef = useRef(null);
   const liqPriceLinesRef = useRef([]);
 
@@ -179,7 +179,7 @@ export function useLiqMap(chartRef, candleSerRef, candlesRef, showLiqMap, displa
       liqPriceLinesRef.current.forEach(line => { try { ser.removePriceLine(line); } catch (_) {} });
       liqPriceLinesRef.current = [];
     };
-  }, [showLiqMap, displayPrice, predictionData, chartRef, candleSerRef, candlesRef]);
+  }, [showLiqMap, displayPrice, predictionData, chartVersion, chartRef, candleSerRef, candlesRef]);
 
   // Update primitive data when new candles load
   useEffect(() => {
@@ -188,4 +188,3 @@ export function useLiqMap(chartRef, candleSerRef, candlesRef, showLiqMap, displa
     }
   }, [candlesRef.current]);
 }
-

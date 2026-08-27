@@ -13,7 +13,7 @@ export default function CandlestickChart({ predictionData, thresholdPct, globalL
   const chartRef = useRef(null), rsiChartRef = useRef(null);
   const candleSerRef = useRef(null), volSerRef = useRef(null);
   const emaSeriesRef = useRef({}), bbSeriesRef = useRef(null), rsiSeriesRef = useRef(null);
-  const vwapSeriesRef = useRef(null), predLinesRef = useRef([]);
+  const vwapSeriesRef = useRef(null), predLinesRef = useRef([]), trendLinesRef = useRef([]);
   const loadingMoreRef = useRef(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
@@ -24,6 +24,7 @@ export default function CandlestickChart({ predictionData, thresholdPct, globalL
   const [showVWAP, setVWAP]           = useState(false);
   const [showLiqMap, setLiqMap]       = useState(true);
   const [showPredLines, setPredLines] = useState(true);
+  const [showTrendLines, setTrendLines] = useState(false);
   const [chartVersion, setChartVersion] = useState(0);
   const [rangePreset, setRangePreset] = useState('7D');
 
@@ -34,15 +35,18 @@ export default function CandlestickChart({ predictionData, thresholdPct, globalL
     emaSeriesRef.current = {};     bbSeriesRef.current = null;
     rsiSeriesRef.current = null;   vwapSeriesRef.current = null;
     predLinesRef.current = [];
+    trendLinesRef.current = [];
   };
 
   const buildAll = useCallback((data) => {
     teardown();
     if (!mainRef.current || !data.length) return;
     const chart = buildBaseChart(mainRef.current, Math.max(mainRef.current.clientHeight, 300), true);
-    const { ser, predLines } = applyCandles(chart, data, predictionData, thresholdPct);
+    const { ser, predLines, trendLines } = applyCandles(chart, data, predictionData, thresholdPct);
     candleSerRef.current = ser;
     predLinesRef.current = predLines;
+    trendLinesRef.current = trendLines;
+    trendLines.forEach(({ line, color }) => line.applyOptions({ color: showTrendLines ? color : 'transparent' }));
     volSerRef.current    = applyVolume(chart, data);
     chart.timeScale().setVisibleLogicalRange({
       from: data.length - 100,
@@ -59,6 +63,12 @@ export default function CandlestickChart({ predictionData, thresholdPct, globalL
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart || !candlesRef.current?.length) return;
+
+    // Adding/removing a series makes Lightweight Charts recalculate its
+    // scales. Keep the user's current viewport; indicator toggles should only
+    // change what is drawn.
+    const timeRange = chart.timeScale().getVisibleLogicalRange();
+    const priceRange = chart.priceScale('right').getVisibleRange();
 
     Object.entries(emaSeriesRef.current).forEach(([p, ser]) => {
       if (!activeEMAs.includes(Number(p)) && ser) {
@@ -99,7 +109,31 @@ export default function CandlestickChart({ predictionData, thresholdPct, globalL
       try { rsiChartRef.current.remove(); } catch (_) {}
       rsiChartRef.current = null; rsiSeriesRef.current = null;
     }
-  }, [activeEMAs, showBB, showRSI, showVWAP, loading, timeframe]);
+
+    const restore = () => {
+      if (!chartRef.current) return;
+      if (timeRange) {
+        chartRef.current.timeScale().setVisibleLogicalRange(timeRange);
+        rsiChartRef.current?.timeScale().setVisibleLogicalRange(timeRange);
+      }
+      if (priceRange) chartRef.current.priceScale('right').setVisibleRange(priceRange);
+    };
+
+    // Series attachment and the RSI panel resize can each trigger another
+    // autoscale pass. Restore after those layout passes as well.
+    let frame = requestAnimationFrame(() => {
+      restore();
+      frame = requestAnimationFrame(() => {
+        restore();
+        frame = requestAnimationFrame(restore);
+      });
+    });
+    const timer = setTimeout(restore, 100);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(timer);
+    };
+  }, [activeEMAs, showBB, showRSI, showVWAP, loading, timeframe, chartVersion]);
 
   useEffect(() => {
     if (!chartRef.current) return;
@@ -161,13 +195,19 @@ export default function CandlestickChart({ predictionData, thresholdPct, globalL
   const visibleRange = useVisiblePriceRange(chartRef, candleSerRef, mainRef, chartVersion);
 
   // Custom hook handles moving historical bands + future horizontal active liquidation lines
-  useLiqMap(chartRef, candleSerRef, candlesRef, showLiqMap, displayPrice, predictionData);
+  useLiqMap(chartRef, candleSerRef, candlesRef, showLiqMap, displayPrice, predictionData, chartVersion);
 
   useEffect(() => {
     predLinesRef.current.forEach(({ line, color }) => {
       try { line.applyOptions({ color: showPredLines ? color : 'transparent' }); } catch (_) {}
     });
-  }, [showPredLines]);
+  }, [showPredLines, chartVersion]);
+
+  useEffect(() => {
+    trendLinesRef.current.forEach(({ line, color }) => {
+      try { line.applyOptions({ color: showTrendLines ? color : 'transparent' }); } catch (_) {}
+    });
+  }, [showTrendLines, chartVersion]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -188,6 +228,7 @@ export default function CandlestickChart({ predictionData, thresholdPct, globalL
       <ChartControls timeframe={timeframe} setTF={setTF} activeEMAs={activeEMAs} toggleEMA={toggleEMA}
         showBB={showBB} setBB={setBB} showRSI={showRSI} setRSI={setRSI} showVWAP={showVWAP} setVWAP={setVWAP}
         showLiqMap={showLiqMap} setLiqMap={setLiqMap} showPredLines={showPredLines} setPredLines={setPredLines}
+        showTrendLines={showTrendLines} setTrendLines={setTrendLines}
         loading={loading} err={err} loadingMore={loadingMore}
         rangePreset={rangePreset} setRangePreset={setRangePreset} />
       <ChartHeader ohlc={ohlc} price={displayPrice} />

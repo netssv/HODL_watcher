@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Cpu, ChevronDown, ChevronUp, Copy, Check } from 'lucide-react';
+import { Cpu, ChevronDown, ChevronUp, Copy, Check, Download } from 'lucide-react';
 
 export function LLMPayloadCard({ payload }) {
   const [expanded, setExpanded] = useState(false);
@@ -10,6 +10,16 @@ export function LLMPayloadCard({ payload }) {
     navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const download = () => {
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `hodl-watcher-payload-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   const micro = payload.market_snapshot?.market_microstructure || {};
@@ -32,6 +42,14 @@ export function LLMPayloadCard({ payload }) {
           }}>
             {copied ? <Check size={11} /> : <Copy size={11} />}
             {copied ? 'Copied!' : 'Copy JSON'}
+          </button>
+          <button onClick={download} title="Download JSON" style={{
+            backgroundColor: 'rgba(16,185,129,0.15)', color: '#34d399',
+            border: '1px solid rgba(16,185,129,0.7)', borderRadius: '4px',
+            padding: '3px 8px', fontSize: '0.88rem', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: '4px'
+          }}>
+            <Download size={11} /> Download JSON
           </button>
           <button onClick={() => setExpanded(e => !e)}
             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.88rem' }}>

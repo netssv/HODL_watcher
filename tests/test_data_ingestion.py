@@ -18,6 +18,7 @@ from unittest.mock import patch, MagicMock
 
 import pandas as pd
 import pytest
+import requests
 
 
 # ---------------------------------------------------------------------------
@@ -85,6 +86,18 @@ def _fake_long_short_response(n: int = 3):
     return entries
 
 
+def _fake_liq_heatmap_response(n: int = 3):
+    klines = _fake_klines_response(n)
+    return {
+        "oi": [
+            {"timestamp": candle[0], "sumOpenInterestValue": str(1_000_000 + i * 10_000)}
+            for i, candle in enumerate(klines)
+        ],
+        "klines": klines,
+        "ls": [{"longAccount": "0.6", "shortAccount": "0.4"}],
+    }
+
+
 def _fake_fear_greed_response():
     """Generate Fear & Greed Index response."""
     base_ts = int(datetime(2025, 1, 1, tzinfo=timezone.utc).timestamp())
@@ -95,6 +108,12 @@ def _fake_fear_greed_response():
             {"value": "75", "value_classification": "Greed", "timestamp": str(base_ts - 172800)},
         ]
     }
+
+
+def _fake_coinalyze_response():
+    return [{"symbol": "BTCUSDT_PERP.A", "history": [
+        {"t": 1_735_689_600, "o": 100, "h": 120, "l": 90, "c": 110},
+    ]}]
 
 
 def _fake_fred_response():
@@ -148,6 +167,30 @@ def _patch_cached_fetch(module_path: str, return_value):
 # ===================================================================
 # TEST GROUP 1: No future data leakage
 # ===================================================================
+
+def test_liq_heatmap_keeps_calculated_levels():
+    with _patch_cached_fetch("binance_futures", _fake_liq_heatmap_response()):
+        from data_ingestion.binance_futures import get_liq_heatmap_data
+        heatmap = get_liq_heatmap_data()
+
+    assert heatmap["upper"] is not None
+    assert heatmap["lower"] is not None
+    assert any(bucket["notionalUSD"] > 0 for bucket in heatmap["long_buckets"])
+    assert any(bucket["notionalUSD"] > 0 for bucket in heatmap["short_buckets"])
+
+
+def test_bybit_liq_heatmap_keeps_calculated_levels():
+    raw = _fake_liq_heatmap_response()
+    raw["oi"] = [{"timestamp": item["timestamp"], "openInterest": "20"} for item in raw["oi"]]
+    raw["klines"] = [[*item[:7]] for item in raw["klines"]]
+    raw["ratio"] = [{"buyRatio": "0.6", "sellRatio": "0.4"}]
+    with _patch_cached_fetch("bybit", raw):
+        from data_ingestion.bybit import get_liq_heatmap_data
+        heatmap = get_liq_heatmap_data()
+
+    assert heatmap["source"] == "bybit_public_open_interest"
+    assert heatmap["upper"] is not None and heatmap["lower"] is not None
+
 
 class TestNoFutureDataLeakage:
     """
@@ -305,6 +348,15 @@ class TestSchemaValidation:
         assert expected_cols.issubset(set(df.columns))
         assert df.index.name == "timestamp"
 
+    def test_coinalyze_uses_oi_close_and_usd_conversion(self):
+        with _patch_cached_fetch("coinalyze", _fake_coinalyze_response()), \
+             patch("data_ingestion.coinalyze.COINALYZE_API_KEY", "test-key"):
+            from data_ingestion.coinalyze import get_coinalyze_data
+            df = get_coinalyze_data()
+
+        assert df.iloc[0]["open_interest"] == 110
+        assert df.attrs["source"] == "coinalyze"
+
 
 # ===================================================================
 # TEST GROUP 4: Metadata
@@ -416,6 +468,21 @@ class TestCacheBehavior:
         # Should re-fetch
         result2 = cached_fetch(test_key, ttl_seconds=0.1, fetch_fn=counting_fetch)
         assert call_count == 2, "fetch_fn was not called after TTL expired"
+
+    def test_cached_fetch_does_not_retry_client_errors(self, monkeypatch):
+        from data_ingestion.cache_utils import cached_fetch
+
+        calls = 0
+        def bad_request():
+            nonlocal calls
+            calls += 1
+            response = MagicMock(status_code=400)
+            raise requests.HTTPError("bad request", response=response)
+
+        monkeypatch.setattr("data_ingestion.cache_utils.time.sleep", lambda _: None)
+        with pytest.raises(requests.HTTPError):
+            cached_fetch(f"test_cache_400_{time.time()}", 60, bad_request)
+        assert calls == 1
 
 
 # ===================================================================

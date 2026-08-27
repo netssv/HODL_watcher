@@ -26,6 +26,7 @@ data_ingestion/cache.sqlite
 # Environment
 .env
 .env.local
+DEPLOYMENT_PRIVATE.md
 
 # OS
 .DS_Store

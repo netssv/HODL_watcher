@@ -106,7 +106,7 @@ info "Found $NODE_VERSION"
 
 # Install frontend dependencies
 info "Installing frontend dependencies..."
-if [[ ! -d "$ROOT/frontend/node_modules" ]]; then
+if [[ ! -x "$ROOT/frontend/node_modules/.bin/vite" ]]; then
   cd "$ROOT/frontend"
   if ! $NPM install --silent; then
     err "Failed to install frontend dependencies"

@@ -100,7 +100,7 @@ def test_train_model_insufficient_samples(mock_fetch):
     
     response = client.post(
         "/api/train",
-        json={"horizon_hours": 1, "n_folds": 5, "threshold_pct": 0.005}
+        json={"horizon_hours": 1, "n_folds": 8, "threshold_pct": 0.005}
     )
     assert response.status_code == 400
     assert "Insufficient training samples" in response.json()["detail"]

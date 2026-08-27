@@ -7,7 +7,7 @@ export function GuideBanner({ isSimpleMode }) {
       <div style={{ width: '100%' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold', color: isSimpleMode ? '#0f172a' : '#ffffff', marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>
           <Info className="w-4 h-4 text-blue-500" />
-          Technical Methodology
+          HODL Field Guide · Stack sats, skip noise
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div>

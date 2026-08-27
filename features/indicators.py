@@ -23,6 +23,24 @@ def compute_market_regime(df: pd.DataFrame, window: int = 14) -> pd.Series:
     regime[trend_strength < -1.0] = -1 # Trending Down
     return regime
 
+
+def compute_adx(df: pd.DataFrame, window: int = 14) -> pd.Series:
+    """Compute ADX from prior/current candles; lookback window: 2 * window."""
+    up_move = df['high'].diff()
+    down_move = -df['low'].diff()
+    plus_dm = up_move.where((up_move > down_move) & (up_move > 0), 0.0)
+    minus_dm = down_move.where((down_move > up_move) & (down_move > 0), 0.0)
+    tr = pd.concat([
+        df['high'] - df['low'],
+        (df['high'] - df['close'].shift()).abs(),
+        (df['low'] - df['close'].shift()).abs(),
+    ], axis=1).max(axis=1)
+    atr = tr.rolling(window, center=False).mean().replace(0, np.nan)
+    plus_di = 100 * plus_dm.rolling(window, center=False).mean() / atr
+    minus_di = 100 * minus_dm.rolling(window, center=False).mean() / atr
+    dx = 100 * (plus_di - minus_di).abs() / (plus_di + minus_di).replace(0, np.nan)
+    return dx.rolling(window, center=False).mean()
+
 def compute_rsi(df: pd.DataFrame, window: int) -> pd.Series:
     """
     Compute relative strength index (RSI).
@@ -106,4 +124,3 @@ def compute_iv_rank(dvol_series: pd.Series, window: int = 720) -> pd.Series:
     rolling_max = dvol_series.rolling(window=window, min_periods=min(24, window), center=False).max()
     denom = rolling_max - rolling_min
     return (dvol_series - rolling_min) / (denom + 1e-9) * 100
-

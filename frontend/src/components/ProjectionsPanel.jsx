@@ -60,7 +60,7 @@ export function ProjectionsPanel({ predictionData, prevPredictionData, isSimpleM
     <section className="card">
       <button onClick={() => setExpanded(e => !e)} style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}>
         <div className="card-header" style={{ marginBottom: expanded ? '0.75rem' : 0 }}>
-          <h2>Directional Projections ({predictionData.meta?.horizon_hours ?? 24}h)</h2>
+          <h2>{isSimpleMode ? "Bitcoin's next move" : 'Directional Projections'} ({predictionData.meta?.horizon_hours ?? 24}h)</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <BaselineBadge status={predictionData.validation_summary.accuracy_vs_naive_baseline} />
             {expanded ? <ChevronUp size={12} style={{ color: 'var(--text-secondary)' }} /> : <ChevronDown size={12} style={{ color: 'var(--text-secondary)' }} />}
@@ -73,7 +73,7 @@ export function ProjectionsPanel({ predictionData, prevPredictionData, isSimpleM
             <div style={{ padding: '0.5rem 0' }}>
               <FriendlyProjection payload={predictionData} />
               <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.75rem', textAlign: 'center', lineHeight: 1.5 }}>
-                The model's most probable direction. Walk-forward testing verifies consistency.
+                The model's strongest guess. Keep calm, check the risk, and remember: no trade is also a position.
               </p>
             </div>
           ) : (

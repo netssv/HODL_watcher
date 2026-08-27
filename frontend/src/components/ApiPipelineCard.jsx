@@ -4,9 +4,12 @@ import { getConnectorStatus } from '../utils.jsx';
 
 const CONNECTORS = [
   { key: 'binance',    name: 'Binance' },
+  { key: 'okx',        name: 'OKX' },
+  { key: 'kraken',     name: 'Kraken' },
+  { key: 'bybit',      name: 'Bybit' },
   { key: 'coinalyze', name: 'Coinalyze' },
   { key: 'deribit',   name: 'Deribit' },
-  { key: 'onchain',   name: 'Onchain' },
+  { key: 'bitcoin_network', name: 'Bitcoin Network' },
   { key: 'etf_flows', name: 'ETF Flows' },
   { key: 'fear_greed',  name: 'Sentiment' },
   { key: 'fred',        name: 'FRED Macro' },
@@ -18,7 +21,11 @@ export function ApiPipelineCard({ gaps, error }) {
   const [expanded, setExpanded] = useState(false);
   const statuses    = CONNECTORS.map(c => ({ ...c, st: getConnectorStatus(c.key, gaps, error) }));
   const onlineCount = statuses.filter(c => c.st.label === 'Online').length;
-  const allOk       = onlineCount === CONNECTORS.length;
+  const standbyCount = statuses.filter(c => c.st.label === 'Standby').length;
+  const fallbackCount = statuses.filter(c => c.st.label.includes('Fallback') || c.st.label.includes('Proxy')).length;
+  const problemCount = statuses.filter(c => ['Offline', 'Degraded', 'Unavailable', 'NO KEY', 'MOCK'].includes(c.st.label)).length;
+  const availableCount = CONNECTORS.length - problemCount;
+  const allOk = problemCount === 0;
   
   const offlineOrDegraded = statuses.some(c => c.st.label === 'Offline' || c.st.label === 'Degraded');
   const hasWarnings = statuses.some(c => c.st.label === 'MOCK' || c.st.label === 'NO KEY');
@@ -37,7 +44,10 @@ export function ApiPipelineCard({ gaps, error }) {
               backgroundColor: badgeBg,
               color: badgeColor,
             }}>
-              {onlineCount}/{CONNECTORS.length} online {allOk ? '✓' : '⚠'}
+              {availableCount}/{CONNECTORS.length} available {allOk ? '✓' : '⚠'}
+              <span title={`${onlineCount} online · ${standbyCount} standby · ${fallbackCount} fallback/proxy · ${problemCount} degraded or unavailable`} style={{ marginLeft: 4, cursor: 'help' }}>
+                ⓘ
+              </span>
             </span>
             {expanded ? <ChevronUp size={12} style={{ color: 'var(--text-muted)' }} /> : <ChevronDown size={12} style={{ color: 'var(--text-muted)' }} />}
           </div>
@@ -48,7 +58,13 @@ export function ApiPipelineCard({ gaps, error }) {
           {statuses.map(({ key, name, st }) => (
             <div key={key} className="status-item">
               <span className="status-name">{name}</span>
-              <span className={`status-badge ${st.color}`}>{st.label}</span>
+            <span
+              className={`status-badge ${st.color}`}
+              title={st.detail}
+              aria-label={`${name}: ${st.label}. ${st.detail}`}
+            >
+              {st.label}
+            </span>
             </div>
           ))}
         </div>

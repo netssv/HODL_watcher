@@ -1,24 +1,35 @@
 import { useState, useEffect, useRef } from 'react';
 import { deriveStrategy } from '../utils.jsx';
 
-const API = import.meta.env.VITE_API_BASE_URL || '';
+const API = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://127.0.0.1:8000' : '');
+const ONLINE_MODE = import.meta.env.VITE_DEPLOYMENT_MODE === 'online';
 const THROTTLE_MS = 5000;
+const CALIBRATION_CACHE_MS = 6 * 60 * 60 * 1000;
+const RECALIBRATION_COOLDOWN_MS = 15 * 60 * 1000;
+const HORIZON_SETTINGS = { 4: 0.003, 24: 0.005, 72: 0.01 };
 
-// Poll /api/predict until it succeeds. Silently retries 503 (model warming up).
-// Max wait: 30 attempts x 10s = 5 minutes.
-async function fetchWithRetry(url, retries = 30, delayMs = 10000) {
+// Give the backend a short warm-up window, then fail visibly instead of
+// leaving the refresh control spinning for several minutes.
+async function fetchWithRetry(url, retries = 4, delayMs = 3000) {
   for (let i = 0; i < retries; i++) {
+    let timeout;
     try {
-      const res = await fetch(url);
+      const controller = new AbortController();
+      timeout = setTimeout(() => controller.abort(), 15000);
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeout);
       if (res.ok) return res;
       if (res.status !== 503) throw new Error(`Server error ${res.status}`);
-      // 503 = model still warming up, keep polling silently
+      // 503 = model still warming up; retry briefly.
     } catch (e) {
-      if (i === retries - 1) throw new Error('Backend unreachable. Run ./dev.sh');
+      if (timeout) clearTimeout(timeout);
+      if (i === retries - 1) throw new Error(e.name === 'AbortError'
+        ? 'Backend request timed out. Start it with: .venv/bin/uvicorn api.app:app --reload'
+        : 'Backend unreachable. Start it with: .venv/bin/uvicorn api.app:app --reload');
     }
     await new Promise(r => setTimeout(r, delayMs));
   }
-  throw new Error('Model warmup exceeded 5 minutes.');
+  throw new Error('Model is still warming up. Try again in a moment.');
 }
 
 
@@ -44,16 +55,33 @@ export function usePredictData(playChime) {
   const [livePrice, setLivePrice]             = useState(null);
   const prevPredictionRef                     = useRef(null);
   const [signalLog, setSignalLog]             = useState([]);
+  const [calibrationCache, setCalibrationCache] = useState({});
+  const [cooldownUntil, setCooldownUntil] = useState(0);
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
+  const [refreshNotice, setRefreshNotice] = useState('');
+
+  useEffect(() => {
+    const update = () => setCooldownRemaining(Math.max(0, cooldownUntil - Date.now()));
+    update();
+    const timer = setInterval(update, 1000);
+    return () => clearInterval(timer);
+  }, [cooldownUntil]);
 
   // Fetch data
-  const fetchPrediction = async (force = false) => {
+  const fetchPrediction = async (force = false, refreshSources = force) => {
+    if (ONLINE_MODE && force) {
+      setRefreshNotice('Simulation: the shared server refreshes market data once per hour. Manual refresh is disabled online.');
+      return;
+    }
+    setRefreshNotice('');
     const now = Date.now();
     if (!force && lastFetchedTime && now - lastFetchedTime < THROTTLE_MS) return;
     setLoading(true); setError(null);
     try {
-      // Use retry only on the first auto-fetch (not force refreshes)
-      const fetcher = !force ? fetchWithRetry : fetch;
-      const res = await fetcher(`${API}/api/predict`);
+      // Refresh can also race model warmup; retry temporary 503 responses.
+      const onlineForceDisabled = !import.meta.env.DEV;
+      const canRefreshSources = refreshSources && !onlineForceDisabled;
+      const res = await fetchWithRetry(`${API}/api/predict${canRefreshSources ? `?force_refresh=${Date.now()}` : ''}`);
       if (!res.ok) throw new Error(`Server error ${res.status}`);
       const data = await res.json();
       
@@ -79,8 +107,28 @@ export function usePredictData(playChime) {
       setLastFetchedTime(now);
       if (data.payload?.validation_summary) setTrainingReport(data.payload.validation_summary);
       setStrategy(deriveStrategy(data.payload));
+      const trainedHorizon = data.payload?.meta?.horizon_hours;
+      if (trainedHorizon != null) {
+        setCalibrationCache(cache => ({
+          ...cache,
+          [trainedHorizon]: { payload: data.payload, gaps: data.data_gaps || [], savedAt: Date.now() },
+        }));
+      }
     } catch (err) { setError(err.message); }
     finally { setLoading(false); }
+  };
+
+  const selectHorizon = hours => {
+    setHorizonHours(hours);
+    setThresholdPct(HORIZON_SETTINGS[hours] ?? 0.005);
+    const cached = calibrationCache[hours];
+    if (!cached || Date.now() - cached.savedAt > CALIBRATION_CACHE_MS) return false;
+    setPredictionData(cached.payload);
+    setGaps(cached.gaps);
+    setTrainingReport(cached.payload.validation_summary);
+    setStrategy(deriveStrategy(cached.payload));
+    setLastFetchedTime(cached.savedAt);
+    return true;
   };
 
   // Live price via Binance WebSocket
@@ -93,18 +141,31 @@ export function usePredictData(playChime) {
 
   // Train model
   const handleTrain = async () => {
+    if (cooldownRemaining > 0 || trainLoading) return;
+    if (ONLINE_MODE) {
+      setRefreshNotice('Online mode: calibration is simulated. The shared Cloud Run model refreshes on its server schedule; upstream APIs are not refreshed from the browser.');
+      return;
+    }
     setShowTrainModal(true);
     setTrainLoading(true); setError(null);
     try {
-      const res = await fetch(`${API}/api/train`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ horizon_hours: horizonHours, threshold_pct: thresholdPct, features_config: featureConfig }),
-      });
-      if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Training failed'); }
-      const data = await res.json();
-      setTrainingReport(data.validation_summary);
-      setGaps(data.data_gaps || []);
-      fetchPrediction(true);
+      for (const [index, hours] of [4, 24, 72].entries()) {
+        const threshold = HORIZON_SETTINGS[hours];
+        setHorizonHours(hours);
+        setThresholdPct(threshold);
+        const res = await fetch(`${API}/api/train`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ horizon_hours: hours, threshold_pct: threshold, features_config: featureConfig, force_refresh: index === 0 }),
+        });
+        if (!res.ok) { const e = await res.json(); throw new Error(e.detail || `${hours}h calibration failed`); }
+        const data = await res.json();
+        setTrainingReport(data.validation_summary);
+        setGaps(data.data_gaps || []);
+        // Training already fetched fresh sources; avoid clearing/refetching them
+        // again just to retrieve the newly trained prediction.
+        await fetchPrediction(true, false);
+      }
+      setCooldownUntil(Date.now() + RECALIBRATION_COOLDOWN_MS);
       if (playChime) playChime();
     } catch (err) { setError(err.message); }
     finally { setTrainLoading(false); }
@@ -112,13 +173,16 @@ export function usePredictData(playChime) {
 
   return {
     horizonHours, setHorizonHours,
+    selectHorizon,
     thresholdPct, setThresholdPct,
     featureConfig, setFeatureConfig,
     predictionData, prevPrediction: prevPredictionRef.current,
     trainingReport, strategy,
     loading, trainLoading,
+    cooldownRemaining,
     showTrainModal, setShowTrainModal,
     gaps, error, lastFetchedTime, livePrice, signalLog,
     fetchPrediction, handleTrain
+    , onlineMode: ONLINE_MODE, refreshNotice
   };
 }

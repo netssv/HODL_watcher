@@ -50,7 +50,7 @@ export function MarketSnapshotCard({ predictionData, prevPredictionData, livePri
     <section className="card">
       <button onClick={() => setExpanded(e => !e)} style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
         <div className="card-header" style={{ marginBottom: expanded ? '0.75rem' : 0 }}>
-          <h2>Market Snapshot</h2>
+          <h2>{isSimpleMode ? 'Bitcoin pulse' : 'Market Snapshot'}</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <span style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
               {lastFetchedTime ? new Date(lastFetchedTime).toLocaleTimeString() : ''}
@@ -62,13 +62,13 @@ export function MarketSnapshotCard({ predictionData, prevPredictionData, livePri
       {expanded && (
         <div className="snapshot-grid">
           <div className="snapshot-box">
-            <span className="snapshot-label">Price</span>
+            <span className="snapshot-label">{isSimpleMode ? 'Stack price' : 'Price'}</span>
             <span className="snapshot-val">
               ${fmt(price)}&nbsp;<DeltaArrow curr={price} prev={prevPrice} />
             </span>
           </div>
           <div className="snapshot-box">
-            <span className="snapshot-label">Fear & Greed</span>
+            <span className="snapshot-label">{isSimpleMode ? 'Market mood' : 'Fear & Greed'}</span>
             <span className="snapshot-val" style={{ color: fg > 60 ? '#10b981' : fg < 40 ? '#f43f5e' : undefined }}>
               {fg}<span style={{ fontSize: '0.88rem', fontWeight: 500, opacity: 0.6 }}>&nbsp;/100</span>
               &nbsp;<DeltaArrow curr={fg} prev={prevFg} />
@@ -76,7 +76,7 @@ export function MarketSnapshotCard({ predictionData, prevPredictionData, livePri
           </div>
           {fr != null && (
             <div className="snapshot-box">
-              <span className="snapshot-label">Funding Rate</span>
+              <span className="snapshot-label">{isSimpleMode ? 'Crowd funding' : 'Funding Rate'}</span>
               <span className="snapshot-val" style={{ color: fr > 0 ? '#10b981' : '#f43f5e' }}>
                 {(fr * 100).toFixed(3)}%
               </span>
@@ -84,7 +84,7 @@ export function MarketSnapshotCard({ predictionData, prevPredictionData, livePri
           )}
           {newsPct != null && (
             <div className="snapshot-box">
-              <span className="snapshot-label">News Tone</span>
+              <span className="snapshot-label">{isSimpleMode ? 'Market chatter' : 'News Tone'}</span>
               <span className="snapshot-val" style={{ color: newsPct > 60 ? '#10b981' : newsPct < 40 ? '#f43f5e' : undefined }}>
                 {newsPct.toFixed(0)}<span style={{ fontSize: '0.88rem', fontWeight: 500, opacity: 0.6 }}>% bullish</span>
               </span>
@@ -96,4 +96,3 @@ export function MarketSnapshotCard({ predictionData, prevPredictionData, livePri
     </section>
   );
 }
-

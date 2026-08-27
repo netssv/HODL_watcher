@@ -1,10 +1,9 @@
 /* =====================================================================
    HODL Watcher — 2026 Design System
-   Inspired by: TradingView, Binance, Linear, Vercel, Radix Themes
-   Design language: Data-terminal dark mode + electric blue accent
+   Design language: warm editorial research desk + market semantics
    ===================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
 
 /* --------------------------------------------------------------------- 
    1. DESIGN TOKENS
@@ -14,14 +13,14 @@ html { font-size: 15px; }
 
 :root {
   /* Market direction — strict semantic use only */
-  --up-color:     #10b981;
-  --up-bg:        rgba(16, 185, 129, 0.10);
-  --up-glow:      rgba(16, 185, 129, 0.20);
-  --down-color:   #f43f5e;
-  --down-bg:      rgba(244, 63, 94, 0.10);
-  --down-glow:    rgba(244, 63, 94, 0.20);
-  --neutral-color: #94a3b8;
-  --neutral-bg:   rgba(148, 163, 184, 0.08);
+  --up-color:     #3f7665;
+  --up-bg:        rgba(63, 118, 101, 0.11);
+  --up-glow:      rgba(63, 118, 101, 0.18);
+  --down-color:   #c65d4b;
+  --down-bg:      rgba(198, 93, 75, 0.11);
+  --down-glow:    rgba(198, 93, 75, 0.18);
+  --neutral-color: #6f7880;
+  --neutral-bg:   rgba(111, 120, 128, 0.10);
 
   /* Baseline badges */
   --baseline-better-color:           #34d399;
@@ -32,29 +31,29 @@ html { font-size: 15px; }
   --baseline-indistinguishable-bg:   rgba(148, 163, 184, 0.08);
 
   /* Single functional accent — Electric Blue (data / analysis) */
-  --accent-brand:       #3b82f6;
-  --accent-brand-hover: #2563eb;
-  --accent-glow:        rgba(59, 130, 246, 0.25);
+  --accent-brand:       #b9684e;
+  --accent-brand-hover: #97513d;
+  --accent-glow:        rgba(185, 104, 78, 0.22);
 
   /* Surfaces */
-  --bg-primary:   #080a0f;
-  --bg-secondary: #0d1117;
-  --bg-card:      rgba(13, 17, 23, 0.85);
-  --bg-card-hover: rgba(17, 22, 32, 0.95);
-  --bg-input:     rgba(255, 255, 255, 0.04);
+  --bg-primary:   #151719;
+  --bg-secondary: #1d2022;
+  --bg-card:      #202427;
+  --bg-card-hover: #272c2e;
+  --bg-input:     #191c1e;
 
   /* Borders */
-  --border-color:       rgba(255, 255, 255, 0.07);
-  --border-color-hover: rgba(255, 255, 255, 0.14);
-  --border-accent:      rgba(59, 130, 246, 0.4);
+  --border-color:       #343a3b;
+  --border-color-hover: #4a5150;
+  --border-accent:      rgba(185, 104, 78, 0.45);
 
   /* Typography */
-  --text-primary:   #f0f4f8;
-  --text-secondary: #8b96a7;
-  --text-muted:     #4a5568;
-  --text-mono:      'JetBrains Mono', monospace;
+  --text-primary:   #eee9df;
+  --text-secondary: #a7a39b;
+  --text-muted:     #6f7674;
+  --text-mono:      'Space Mono', monospace;
 
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
   line-height: 1.5;
   color: var(--text-primary);
   background-color: var(--bg-primary);
@@ -68,27 +67,13 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    radial-gradient(ellipse 60% 40% at 80% 10%, rgba(59, 130, 246, 0.05) 0%, transparent 70%),
-    radial-gradient(ellipse 40% 30% at 10% 90%, rgba(16, 185, 129, 0.03) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 35% at 100% 0%, rgba(185, 104, 78, 0.08) 0%, transparent 70%),
+    radial-gradient(ellipse 45% 35% at 0% 100%, rgba(63, 118, 101, 0.06) 0%, transparent 65%),
     var(--bg-primary);
   background-attachment: fixed;
 }
 
-/* Subtle scan-line overlay on dark mode body */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.03) 2px,
-    rgba(0, 0, 0, 0.03) 4px
-  );
-  z-index: 0;
-}
+body::before { display: none; }
 
 /* --------------------------------------------------------------------- 
    3. SIMPLE MODE OVERRIDES
@@ -135,4 +120,3 @@ body::before {
   0%, 100% { opacity: 1; }
   30% { opacity: 0.5; }
 }
-

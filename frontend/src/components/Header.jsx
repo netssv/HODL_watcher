@@ -5,14 +5,17 @@ export { GuideBanner } from './GuideBanner';
 // ── Error banner ─────────────────────────────────────────────────────────────
 export function ErrorBanner({ error }) {
   if (!error) return null;
+  const production = !import.meta.env.DEV;
   return (
     <div className="banner banner-error">
       <ShieldAlert className="w-4 h-4 flex-shrink-0" style={{ marginTop: 2, color: '#f43f5e' }} />
       <div>
-        <strong>Connection Issue:</strong> Start backend using:{' '}
+        <strong>Connection Issue:</strong>{' '}
+        {production ? `Cloud Run request failed: ${error}` : 'Start backend using:'}{' '}
+        {!production &&
         <code style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.90rem' }}>
           .venv/bin/uvicorn api.app:app --reload
-        </code>
+        </code>}
       </div>
     </div>
   );
@@ -25,6 +28,7 @@ export function AppHeader({
   showExplainers, setShowExplainers,
   sidebarHidden, setSidebarHidden,
   loading, fetchPrediction, playClick,
+  onPractice,
 }) {
   const fmtPrice = n => n?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -34,7 +38,9 @@ export function AppHeader({
   const fg = snapshot?.fear_greed_index;
   const newsPct = snapshot?.news_sentiment_bullish_pct;
   const fr = snapshot?.funding_rate?.value;
-  const dxy = snapshot?.macro?.dxy;
+  // Do not consume the legacy `macro.dxy` field: old payloads were mislabeled.
+  const usdIndex = snapshot?.macro?.usd_index;
+  const usdIndexChange = snapshot?.macro?.usd_index_change_pct;
   const flow = snapshot?.onchain?.exchange_net_flow;
   const isLowConf = predictionData?.model_prediction?.confidence_note?.includes("CONFIDENCE LOW");
 
@@ -51,7 +57,7 @@ export function AppHeader({
         <div className="header-title">
           <h1>HODL Watcher</h1>
           <p>
-            BTC/USDT Quantitative Analysis
+            BTC/USDT signal desk · stack sats, skip noise
             {livePrice && (
               <span style={{ marginLeft: '0.75rem', color: '#10b981', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700 }}>
                 ${fmtPrice(livePrice)}
@@ -67,7 +73,7 @@ export function AppHeader({
         <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', alignItems: 'center' }}>
           {/* Projection Summary */}
           <div className="header-card">
-            <span className="header-card-label">Projection</span>
+            <span className="header-card-label">{isSimpleMode ? 'Next move' : 'Projection'}</span>
             <span className="header-card-value" style={{ color: predColor }}>
               {isLowConf ? "NO ACTION" : predText}
             </span>
@@ -81,7 +87,7 @@ export function AppHeader({
           {/* Fear & Greed */}
           {fg != null && (
             <div className="header-card">
-              <span className="header-card-label">Fear & Greed</span>
+            <span className="header-card-label">{isSimpleMode ? 'Crowd mood' : 'Fear & Greed'}</span>
               <span className="header-card-value" style={{ color: fg > 75 ? 'var(--down-color)' : fg < 25 ? 'var(--up-color)' : 'var(--text-primary)' }}>
                 {fg} / 100
               </span>
@@ -96,7 +102,7 @@ export function AppHeader({
           {/* News Tone */}
           {newsPct != null && (
             <div className="header-card">
-              <span className="header-card-label">News Tone</span>
+            <span className="header-card-label">{isSimpleMode ? 'Market chatter' : 'News Tone'}</span>
               <span className="header-card-value" style={{ color: newsPct > 60 ? 'var(--up-color)' : newsPct < 40 ? 'var(--down-color)' : 'var(--text-primary)' }}>
                 {newsPct.toFixed(0)}% Bullish
               </span>
@@ -111,7 +117,7 @@ export function AppHeader({
           {/* Funding Rate */}
           {fr != null && (
             <div className="header-card">
-              <span className="header-card-label">Funding Rate</span>
+            <span className="header-card-label">{isSimpleMode ? 'Leverage mood' : 'Funding Rate'}</span>
               <span className="header-card-value" style={{ color: fr > 0 ? 'var(--up-color)' : 'var(--down-color)' }}>
                 {(fr * 100).toFixed(3)}%
               </span>
@@ -123,42 +129,43 @@ export function AppHeader({
             </div>
           )}
 
-          {/* DXY Index */}
-          {dxy > 0 && (
+          {/* ICE DXY quote */}
+          {usdIndex != null && (
             <div className="header-card">
-              <span className="header-card-label">DXY (USD)</span>
-              <span className="header-card-value" style={{ color: dxy > 104 ? 'var(--down-color)' : 'var(--up-color)' }}>
-                {dxy.toFixed(2)}
+              <span className="header-card-label">DXY (ICE)</span>
+              <span className="header-card-value" style={{ color: usdIndexChange > 0 ? 'var(--down-color)' : usdIndexChange < 0 ? 'var(--up-color)' : 'var(--text-primary)' }}>
+                {usdIndex.toFixed(2)}
               </span>
               <div className="header-tooltip">
-                <span className="header-tooltip-title">US Dollar Index (DXY)</span>
-                <span className="header-tooltip-desc">Index measuring the strength of the US Dollar against a basket of foreign currencies.</span>
-                <span className="header-tooltip-example">Example: DXY rising above 104 is bearish for BTC as capital rotates into fiat cash.</span>
+                <span className="header-tooltip-title">U.S. Dollar Index (DXY)</span>
+                <span className="header-tooltip-desc">ICE U.S. Dollar Index (DXY), sourced from DX-Y.NYB. Quote data may be delayed.</span>
+                <span className="header-tooltip-example">{usdIndexChange != null ? `Latest daily change: ${(usdIndexChange * 100).toFixed(2)}%` : 'Daily change unavailable.'}</span>
               </div>
             </div>
           )}
 
-          {/* WBTC Net Flow */}
-          {flow !== undefined && (
+          {/* Exchange flow is omitted when no real provider is available. */}
+          {flow != null && (
             <div className="header-card">
-              <span className="header-card-label">WBTC Inflow</span>
+              <span className="header-card-label">Exchange Flow</span>
               <span className="header-card-value" style={{ color: flow >= 0 ? 'var(--up-color)' : 'var(--down-color)' }}>
                 {flow >= 0 ? `+${flow.toFixed(1)}` : flow.toFixed(1)} BTC
               </span>
               <div className="header-tooltip">
-                <span className="header-tooltip-title">Wrapped BTC Net Flow</span>
-                <span className="header-tooltip-desc">Net quantity of Wrapped BTC deposited to or withdrawn from tracked exchange wallets.</span>
-                <span className="header-tooltip-example">Example: Positive (+) values show inflows which can sign potential selling pressure.</span>
+                <span className="header-tooltip-title">Exchange Net Flow</span>
+                <span className="header-tooltip-desc">BTC deposited to or withdrawn from tracked exchange wallets.</span>
+                <span className="header-tooltip-example">Positive values indicate inflows and can signal potential selling pressure.</span>
               </div>
             </div>
           )}
         </div>
       </div>
       <div className="header-buttons">
-        <div style={{ display: 'flex', backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '2px', alignItems: 'center' }}>
-          {[['Simple', true], ['Advanced', false]].map(([lbl, val]) => (
+        <div className="mode-switch" style={{ display: 'flex', backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '2px', alignItems: 'center' }}>
+          {[['HODL', true], ['PRO', false]].map(([lbl, val]) => (
             <button key={lbl}
               onClick={() => { if (isSimpleMode !== val) { playClick(); setIsSimpleMode(val); } }}
+              title={val ? 'HODL mode — keep it calm: price, projection, and risk' : 'PRO mode — full market context and indicators'}
               style={{
                 padding: '0.35rem 0.7rem', fontSize: '0.90rem', fontWeight: 600, border: 'none', borderRadius: '3px', cursor: 'pointer', transition: 'all 0.2s',
                 backgroundColor: isSimpleMode === val ? 'var(--accent-brand)' : 'transparent',
@@ -170,12 +177,13 @@ export function AppHeader({
             </button>
           ))}
         </div>
+        <button onClick={onPractice} className="btn btn-secondary" title="Open risk-free historical simulator">PRACTICE</button>
         <button
           onClick={() => { playClick(); setShowExplainers(v => !v); }}
           className="btn btn-secondary"
         >
           <BookOpen className="w-3.5 h-3.5 text-blue-500" />
-          {showExplainers ? 'Hide Guide' : 'Methodology Guide'}
+          {showExplainers ? (isSimpleMode ? 'Close field notes' : 'Hide Guide') : (isSimpleMode ? 'Why this signal?' : 'Methodology Guide')}
         </button>
 
         <button
@@ -184,7 +192,7 @@ export function AppHeader({
           className="btn btn-primary"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
+          {isSimpleMode ? 'Check the chain' : 'Refresh'}
         </button>
       </div>
     </header>

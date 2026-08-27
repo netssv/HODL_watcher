@@ -13,6 +13,8 @@ import time
 from pathlib import Path
 from typing import Callable, Any
 
+import requests
+
 logger = logging.getLogger(__name__)
 
 DB_PATH = Path(__file__).resolve().parent / "cache.sqlite"
@@ -31,6 +33,16 @@ def _get_conn() -> sqlite3.Connection:
         """
     )
     return conn
+
+
+def clear_response_cache() -> None:
+    """Clear cached API responses while preserving quota counters."""
+    conn = _get_conn()
+    try:
+        conn.execute("DELETE FROM cache")
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def cached_fetch(key: str, ttl_seconds: float, fetch_fn: Callable[[], Any]) -> Any:
@@ -71,6 +83,9 @@ def _with_backoff(fetch_fn: Callable[[], Any], max_retries: int = 5) -> Any:
         try:
             return fetch_fn()
         except Exception as exc:
+            response = exc.response if isinstance(exc, requests.HTTPError) else None
+            if response is not None and response.status_code not in (429,) and response.status_code < 500:
+                raise
             is_last = attempt == max_retries - 1
             if is_last:
                 raise

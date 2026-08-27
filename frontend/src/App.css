@@ -64,7 +64,7 @@
   place-items: center;
   flex-grow: 1;
 
-  @media (max-width: 1024px) {
+@media (max-width: 1024px) {
     padding: 32px 20px 24px;
     gap: 18px;
   }
@@ -181,4 +181,12 @@
     right: 0;
     border-right-color: var(--border);
   }
+}
+/* Practice Mode exchange-style chart / order-entry layout. */
+.practice-market-layout { flex-direction: row; }
+
+@media (max-width: 900px) {
+  .practice-market-layout { flex-direction: column; min-height: 0 !important; }
+  .practice-market-chart { min-height: 480px; }
+  .practice-market-desk { flex: 1 1 auto !important; max-width: none !important; width: auto; }
 }

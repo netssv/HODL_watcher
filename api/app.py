@@ -15,6 +15,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.routes import router, warmup_training
+from data_ingestion.dxy import SOURCE_VERSION as MACRO_DXY_SOURCE
 
 # Setup logger
 logging.basicConfig(level=logging.INFO)
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info("Active macro_dxy source: %s", MACRO_DXY_SOURCE)
     # Warm up model in background — predict returns 503 until done
     threading.Thread(target=warmup_training, daemon=True).start()
     yield
@@ -37,6 +39,7 @@ app = FastAPI(
 _extra_origin = os.environ.get("ALLOWED_ORIGIN", "")
 _origins = [
     "http://localhost:5173",           # local Vite dev server
+    "http://127.0.0.1:5173",           # local Vite dev server via loopback IP
     "https://hodl-watcher.vercel.app", # production Vercel URL (update if renamed)
 ]
 if _extra_origin:
@@ -45,10 +48,22 @@ if _extra_origin:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_origins,
+    allow_origin_regex=r"https://[a-zA-Z0-9-]+\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/")
+def root():
+    return {
+        "name": "HODL Watcher API",
+        "status": "online",
+        "health": "/api/health",
+        "docs": "/docs",
+        "predict": "/api/predict",
+    }
+
 
 app.include_router(router)
 

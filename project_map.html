@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HODL Watcher — Interactive Project Map</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="docs/map_assets/map_viewer.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="logo-icon">HW</div>
+        <div>
+          <h1 id="project-title">HODL Watcher — Architecture Map</h1>
+          <p>Full codebase architecture, endpoints catalog &amp; file compliance</p>
+        </div>
+      </div>
+      <div>
+        <span class="badge badge-live">● System Live &amp; Synced</span>
+      </div>
+    </header>
+
+    <!-- Quick Stats Bar -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total Files</div>
+        <div class="stat-value" id="stat-files">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total LOC</div>
+        <div class="stat-value" id="stat-loc">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">API Endpoints</div>
+        <div class="stat-value" id="stat-endpoints">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">200-Line Limit Compliance</div>
+        <div class="stat-value" id="stat-compliance" style="font-size: 1.1rem; padding-top: 8px;">-</div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="tab-btn active" data-tab="tab-architecture">Architecture &amp; Layers</button>
+      <button class="tab-btn" data-tab="tab-dataflow">Data Flow Pipeline</button>
+      <button class="tab-btn" data-tab="tab-endpoints">API Endpoints</button>
+      <button class="tab-btn" data-tab="tab-files">File Inventory</button>
+      <button class="tab-btn" data-tab="tab-raw">Raw JSON</button>
+    </nav>
+
+    <!-- Tab 1: Architecture Layers -->
+    <div id="tab-architecture" class="tab-content active">
+      <div class="card-grid" id="layers-grid"></div>
+    </div>
+
+    <!-- Tab 2: Data Flow Pipeline -->
+    <div id="tab-dataflow" class="tab-content">
+      <div id="flows-container"></div>
+    </div>
+
+    <!-- Tab 3: API Endpoints -->
+    <div id="tab-endpoints" class="tab-content">
+      <div class="card-grid" id="endpoints-grid"></div>
+    </div>
+
+    <!-- Tab 4: File Inventory -->
+    <div id="tab-files" class="tab-content">
+      <div class="toolbar">
+        <input type="text" id="search-files" class="search-input" placeholder="Search file path or name (e.g. app.py, Candlestick, validation)...">
+        <select id="filter-layer" class="filter-select">
+          <option value="all">All Layers</option>
+          <option value="api">API</option>
+          <option value="data_ingestion">Data Ingestion</option>
+          <option value="features">Features</option>
+          <option value="model">ML / Model</option>
+          <option value="frontend">Frontend</option>
+          <option value="agents">Agents &amp; Skills</option>
+          <option value="tests">Tests</option>
+        </select>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>File Path</th>
+              <th>Layer</th>
+              <th>LOC</th>
+              <th>Size</th>
+            </tr>
+          </thead>
+          <tbody id="files-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tab 5: Raw JSON -->
+    <div id="tab-raw" class="tab-content">
+      <div style="display:flex; justify-content:flex-end; margin-bottom: 12px; gap: 8px;">
+        <button id="copy-json-btn" class="btn-action">Copy JSON</button>
+      </div>
+      <pre class="json-view" id="raw-json-content">Loading JSON map...</pre>
+    </div>
+  </div>
+
+  <script src="docs/map_assets/embedded_map.js"></script>
+  <script src="docs/map_assets/map_viewer.js"></script>
+</body>
+</html>
