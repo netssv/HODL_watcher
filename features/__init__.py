@@ -1,5 +1,9 @@
-"""
-features — Pure functions that compute model features from raw DataFrames.
+"""Features package exports."""
 
-Each function documents its lookback window for leakage auditing.
-"""
+from .builder import build_features
+from .squeeze_indicators import compute_squeeze_probability
+
+__all__ = [
+    "build_features",
+    "compute_squeeze_probability",
+]

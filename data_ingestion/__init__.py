@@ -27,6 +27,8 @@ from . import bybit
 from . import news_gnews
 from . import news_coindesk
 from . import dxy
+from . import cvd_engine
+from . import cycle_metrics
 
 __all__ = [
     "binance_spot",
@@ -48,4 +50,7 @@ __all__ = [
     "news_gnews",
     "news_coindesk",
     "dxy",
+    "cvd_engine",
+    "cycle_metrics",
 ]
+

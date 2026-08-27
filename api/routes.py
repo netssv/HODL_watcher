@@ -308,10 +308,37 @@ def get_prediction(force_refresh: bool = False):
         network_snapshot=srcs.get("network_snapshot"),
     )
     payload["news"] = news_rows_out
-    
+
+    # Early Warnings & Microstructure Analytics
+    curr_price = float(srcs["spot_df"]["close"].iloc[-1])
+    fr_val = (
+        float(srcs["funding_df"]["funding_rate"].iloc[-1])
+        if srcs.get("funding_df") is not None and not srcs["funding_df"].empty
+        else None
+    )
+    ls_val = (
+        float(srcs["long_short_df"]["long_short_ratio"].iloc[-1])
+        if srcs.get("long_short_df") is not None and not srcs["long_short_df"].empty
+        else None
+    )
+    liq_clusters = (srcs.get("liq_heatmap_dict") or {}).get("short_buckets", [])
+
+    from features.squeeze_indicators import compute_squeeze_probability
+    from data_ingestion.cvd_engine import detect_cvd_divergence
+    from data_ingestion.cycle_metrics import fetch_cycle_metrics
+
+    payload["short_squeeze_analysis"] = compute_squeeze_probability(
+        funding_rate=fr_val, long_short_ratio=ls_val, price=curr_price, liq_clusters=liq_clusters
+    )
+    payload["cvd_analysis"] = detect_cvd_divergence(
+        spot_df=srcs.get("spot_df"), futures_df=srcs.get("futures_df")
+    )
+    payload["cycle_analysis"] = fetch_cycle_metrics(current_price=curr_price)
+
     _PREDICTION_CACHE = PredictResponse(payload=payload, data_gaps=list(set(gaps)))
     _PREDICTION_CACHE_AT = time.time()
     return _PREDICTION_CACHE
+
 
 
 @router.get("/news-instructions", response_model=NewsInstructionsResponse)

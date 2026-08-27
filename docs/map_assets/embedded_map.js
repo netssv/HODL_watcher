@@ -1,7 +1,7 @@
 window.EMBEDDED_PROJECT_MAP = {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "schema_version": "1.0.0",
-  "generated_at": "2026-08-27T00:58:24.586528+00:00",
+  "generated_at": "2026-08-27T03:55:21.985579+00:00",
   "project": {
     "name": "HODL Watcher",
     "version": "1.0.0",
@@ -148,24 +148,24 @@ window.EMBEDDED_PROJECT_MAP = {
     ]
   },
   "summary": {
-    "total_files": 179,
-    "total_loc": 23410,
+    "total_files": 186,
+    "total_loc": 24288,
     "layer_breakdown": {
       "root_config": {
         "files": 19,
-        "loc": 3334
+        "loc": 3390
       },
       "agents": {
         "files": 39,
         "loc": 2842
       },
       "data_ingestion": {
-        "files": 22,
-        "loc": 2432
+        "files": 24,
+        "loc": 2626
       },
       "features": {
-        "files": 3,
-        "loc": 372
+        "files": 4,
+        "loc": 489
       },
       "model": {
         "files": 8,
@@ -173,15 +173,15 @@ window.EMBEDDED_PROJECT_MAP = {
       },
       "api": {
         "files": 5,
-        "loc": 784
+        "loc": 811
       },
       "tests": {
-        "files": 8,
-        "loc": 1010
+        "files": 9,
+        "loc": 1077
       },
       "frontend": {
-        "files": 67,
-        "loc": 9249
+        "files": 70,
+        "loc": 9610
       },
       "scripts": {
         "files": 3,
@@ -189,7 +189,7 @@ window.EMBEDDED_PROJECT_MAP = {
       },
       "docs": {
         "files": 5,
-        "loc": 2145
+        "loc": 2201
       }
     },
     "compliance": {
@@ -234,7 +234,7 @@ window.EMBEDDED_PROJECT_MAP = {
           },
           {
             "path": "api/routes.py",
-            "loc": 345,
+            "loc": 372,
             "layer": "api"
           },
           {
@@ -289,7 +289,7 @@ window.EMBEDDED_PROJECT_MAP = {
           },
           {
             "path": "docs/map_assets/embedded_map.js",
-            "loc": 1733,
+            "loc": 1789,
             "layer": "docs"
           }
         ]
@@ -405,8 +405,8 @@ window.EMBEDDED_PROJECT_MAP = {
       "path": "project_map.json",
       "name": "project_map.json",
       "layer": "root_config",
-      "loc": 1733,
-      "size_bytes": 41865,
+      "loc": 1789,
+      "size_bytes": 43274,
       "extension": ".json"
     },
     {
@@ -757,8 +757,8 @@ window.EMBEDDED_PROJECT_MAP = {
       "path": "data_ingestion/__init__.py",
       "name": "__init__.py",
       "layer": "data_ingestion",
-      "loc": 51,
-      "size_bytes": 1143,
+      "loc": 56,
+      "size_bytes": 1236,
       "extension": ".py"
     },
     {
@@ -815,6 +815,22 @@ window.EMBEDDED_PROJECT_MAP = {
       "layer": "data_ingestion",
       "loc": 52,
       "size_bytes": 1835,
+      "extension": ".py"
+    },
+    {
+      "path": "data_ingestion/cvd_engine.py",
+      "name": "cvd_engine.py",
+      "layer": "data_ingestion",
+      "loc": 115,
+      "size_bytes": 4338,
+      "extension": ".py"
+    },
+    {
+      "path": "data_ingestion/cycle_metrics.py",
+      "name": "cycle_metrics.py",
+      "layer": "data_ingestion",
+      "loc": 74,
+      "size_bytes": 2973,
       "extension": ".py"
     },
     {
@@ -933,8 +949,8 @@ window.EMBEDDED_PROJECT_MAP = {
       "path": "features/__init__.py",
       "name": "__init__.py",
       "layer": "features",
-      "loc": 5,
-      "size_bytes": 152,
+      "loc": 9,
+      "size_bytes": 201,
       "extension": ".py"
     },
     {
@@ -951,6 +967,14 @@ window.EMBEDDED_PROJECT_MAP = {
       "layer": "features",
       "loc": 126,
       "size_bytes": 5028,
+      "extension": ".py"
+    },
+    {
+      "path": "features/squeeze_indicators.py",
+      "name": "squeeze_indicators.py",
+      "layer": "features",
+      "loc": 113,
+      "size_bytes": 4210,
       "extension": ".py"
     },
     {
@@ -1037,8 +1061,8 @@ window.EMBEDDED_PROJECT_MAP = {
       "path": "api/routes.py",
       "name": "routes.py",
       "layer": "api",
-      "loc": 345,
-      "size_bytes": 16436,
+      "loc": 372,
+      "size_bytes": 17572,
       "extension": ".py"
     },
     {
@@ -1087,6 +1111,14 @@ window.EMBEDDED_PROJECT_MAP = {
       "layer": "tests",
       "loc": 515,
       "size_bytes": 19471,
+      "extension": ".py"
+    },
+    {
+      "path": "tests/test_early_warnings.py",
+      "name": "test_early_warnings.py",
+      "layer": "tests",
+      "loc": 67,
+      "size_bytes": 2461,
       "extension": ".py"
     },
     {
@@ -1245,8 +1277,8 @@ window.EMBEDDED_PROJECT_MAP = {
       "path": "frontend/src/App.jsx",
       "name": "App.jsx",
       "layer": "frontend",
-      "loc": 200,
-      "size_bytes": 8700,
+      "loc": 195,
+      "size_bytes": 9097,
       "extension": ".jsx"
     },
     {
@@ -1357,8 +1389,24 @@ window.EMBEDDED_PROJECT_MAP = {
       "path": "frontend/src/components/ContentPanels.jsx",
       "name": "ContentPanels.jsx",
       "layer": "frontend",
-      "loc": 7,
-      "size_bytes": 430,
+      "loc": 11,
+      "size_bytes": 618,
+      "extension": ".jsx"
+    },
+    {
+      "path": "frontend/src/components/CvdDivergenceCard.jsx",
+      "name": "CvdDivergenceCard.jsx",
+      "layer": "frontend",
+      "loc": 122,
+      "size_bytes": 4609,
+      "extension": ".jsx"
+    },
+    {
+      "path": "frontend/src/components/CycleOnChainCard.jsx",
+      "name": "CycleOnChainCard.jsx",
+      "layer": "frontend",
+      "loc": 117,
+      "size_bytes": 4227,
       "extension": ".jsx"
     },
     {
@@ -1439,6 +1487,14 @@ window.EMBEDDED_PROJECT_MAP = {
       "layer": "frontend",
       "loc": 150,
       "size_bytes": 8662,
+      "extension": ".jsx"
+    },
+    {
+      "path": "frontend/src/components/ShortSqueezeCard.jsx",
+      "name": "ShortSqueezeCard.jsx",
+      "layer": "frontend",
+      "loc": 123,
+      "size_bytes": 4621,
       "extension": ".jsx"
     },
     {
@@ -1701,8 +1757,8 @@ window.EMBEDDED_PROJECT_MAP = {
       "path": "docs/map_assets/embedded_map.js",
       "name": "embedded_map.js",
       "layer": "docs",
-      "loc": 1733,
-      "size_bytes": 41897,
+      "loc": 1789,
+      "size_bytes": 43306,
       "extension": ".js"
     },
     {

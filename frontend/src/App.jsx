@@ -3,7 +3,10 @@ import useSound from 'use-sound';
 
 import { AppHeader, GuideBanner, ErrorBanner } from './components/Header.jsx';
 import SetupCard, { ApiPipelineCard, MarketSnapshotCard, SignalLogCard } from './components/Sidebar.jsx';
-import { ProjectionsPanel, StrategyCard, RiskManagementCard, ValidationChart, LLMPayloadCard, NewsSentimentCard } from './components/ContentPanels.jsx';
+import {
+  ProjectionsPanel, StrategyCard, RiskManagementCard, ValidationChart,
+  LLMPayloadCard, NewsSentimentCard, ShortSqueezeCard, CvdDivergenceCard, CycleOnChainCard
+} from './components/ContentPanels.jsx';
 import CandlestickChart from './components/CandlestickChart.jsx';
 import { AdvancedIndicators } from './components/AdvancedIndicators.jsx';
 import TrainModal from './components/TrainModal.jsx';
@@ -14,6 +17,7 @@ import { usePredictData } from './hooks/usePredictData.js';
 import { LayoutDashboard } from 'lucide-react';
 import { CompositeScore } from './components/CompositeScore.jsx';
 import PracticeView from './components/PracticeView.jsx';
+
 
 export default function App() {
   const [playClick] = useSound('/click.wav');
@@ -131,12 +135,7 @@ export default function App() {
             >
               <div key="chart" id="chart" title={isSimpleMode ? 'Bitcoin chart' : 'Chart'}>
                 {predictionData && (
-                  <CandlestickChart 
-                    isSimpleMode={isSimpleMode} 
-                    predictionData={predictionData} 
-                    thresholdPct={thresholdPct} 
-                    globalLivePrice={livePrice} 
-                  />
+                  <CandlestickChart isSimpleMode={isSimpleMode} predictionData={predictionData} thresholdPct={thresholdPct} globalLivePrice={livePrice} />
                 )}
               </div>
               {predictionData && (
@@ -144,50 +143,44 @@ export default function App() {
                   <CompositeScore payload={predictionData} isSimpleMode={isSimpleMode} />
                 </div>
               )}
-              
+              {!isSimpleMode && predictionData?.short_squeeze_analysis && (
+                <div key="squeeze" id="squeeze" title="Short Squeeze & Liquidity Magnet">
+                  <ShortSqueezeCard squeezeData={predictionData.short_squeeze_analysis} currentPrice={livePrice} />
+                </div>
+              )}
+              {!isSimpleMode && predictionData?.cvd_analysis && (
+                <div key="cvd" id="cvd" title="CVD Order Flow & Absorption">
+                  <CvdDivergenceCard cvdData={predictionData.cvd_analysis} />
+                </div>
+              )}
+              {!isSimpleMode && predictionData?.cycle_analysis && (
+                <div key="cycle" id="cycle" title="Macro Cycle & MVRV Valuation">
+                  <CycleOnChainCard cycleData={predictionData.cycle_analysis} />
+                </div>
+              )}
               {!isSimpleMode && predictionData && (
                 <div key="indicators" id="indicators" title="Advanced Quantitative Indicators">
                   <AdvancedIndicators snapshot={predictionData.market_snapshot} />
                 </div>
               )}
-              
               {!isSimpleMode && predictionData?.news && predictionData.news.length > 0 && (
                 <div key="news" id="news" title="News & Sentiment">
                   <NewsSentimentCard news={predictionData.news} />
                 </div>
               )}
-              
-
-
               {!isSimpleMode && (
                 <div key="llm" id="llm" title="LLM Agent Payload">
                   <LLMPayloadCard payload={predictionData} />
                 </div>
               )}
-              
               {!isSimpleMode && (
                 <div key="validation" id="validation" title="Walk-Forward Validation Trend">
                   <ValidationChart trainingReport={trainingReport} />
                 </div>
               )}
             </WidgetGrid>
-            
             {predictionData && (
-              <footer
-                className="footer-text"
-                style={{
-                  marginTop: '1.25rem',
-                  padding: '0.75rem 1rem',
-                  borderTop: '1px solid rgba(148, 163, 184, 0.2)',
-                  color: 'var(--text-secondary)',
-                  fontSize: '0.95rem',
-                  lineHeight: 1.6,
-                  textAlign: 'center',
-                  maxWidth: '72ch',
-                  marginLeft: 'auto',
-                  marginRight: 'auto',
-                }}
-              >
+              <footer className="footer-text" style={{ marginTop: '1.25rem', padding: '0.75rem 1rem', borderTop: '1px solid rgba(148, 163, 184, 0.2)', color: 'var(--text-secondary)', textAlign: 'center' }}>
                 <p style={{ margin: 0 }}>{predictionData.disclaimers?.[0]}</p>
               </footer>
             )}
@@ -198,3 +191,5 @@ export default function App() {
     </div>
   );
 }
+
+
